@@ -809,7 +809,64 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_funding: {
+        Args: { p_request_id: string }
+        Returns: {
+          course_id: string
+          created_at: string
+          id: string
+          needed_by: string | null
+          prior_funding_note: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewer_id: string | null
+          status: Database["public"]["Enums"]["funding_status"]
+          student_fee: number
+          submitted_at: string | null
+          total_funding: number | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "funding_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       can_access_course: { Args: { p_course_id: string }; Returns: boolean }
+      close_invoice: {
+        Args: { p_invoice_id: string }
+        Returns: {
+          accounting_submitted_at: string | null
+          amount: number | null
+          base_amount: number | null
+          cc_fee_applied: boolean
+          client_id: string | null
+          closed_at: string | null
+          course_id: string
+          created_at: string
+          due_date: string | null
+          id: string
+          invoice_number: string | null
+          is_placeholder: boolean
+          issued_at: string | null
+          notes: string | null
+          paid_at: string | null
+          participants: number | null
+          po_number: string | null
+          quote_id: string | null
+          requested_at: string
+          sent_at: string | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_course: {
         Args: {
           p_campus_id?: string
@@ -830,7 +887,205 @@ export type Database = {
         Returns: Database["public"]["Enums"]["step_status"]
       }
       is_iahv_admin: { Args: never; Returns: boolean }
+      issue_invoice_number: {
+        Args: { p_invoice_id: string; p_number: string }
+        Returns: {
+          accounting_submitted_at: string | null
+          amount: number | null
+          base_amount: number | null
+          cc_fee_applied: boolean
+          client_id: string | null
+          closed_at: string | null
+          course_id: string
+          created_at: string
+          due_date: string | null
+          id: string
+          invoice_number: string | null
+          is_placeholder: boolean
+          issued_at: string | null
+          notes: string | null
+          paid_at: string | null
+          participants: number | null
+          po_number: string | null
+          quote_id: string | null
+          requested_at: string
+          sent_at: string | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      issue_quote_number: {
+        Args: { p_number: string; p_quote_id: string }
+        Returns: {
+          amount: number | null
+          client_id: string | null
+          course_id: string
+          created_at: string
+          id: string
+          issued_at: string | null
+          notes: string | null
+          quote_number: string | null
+          requested_at: string
+          status: Database["public"]["Enums"]["quote_status"]
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "quotes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      log_admin_event: {
+        Args: { p_course_id: string; p_payload?: Json; p_type: string }
+        Returns: undefined
+      }
+      mark_invoice_paid: {
+        Args: { p_invoice_id: string }
+        Returns: {
+          accounting_submitted_at: string | null
+          amount: number | null
+          base_amount: number | null
+          cc_fee_applied: boolean
+          client_id: string | null
+          closed_at: string | null
+          course_id: string
+          created_at: string
+          due_date: string | null
+          id: string
+          invoice_number: string | null
+          is_placeholder: boolean
+          issued_at: string | null
+          notes: string | null
+          paid_at: string | null
+          participants: number | null
+          po_number: string | null
+          quote_id: string | null
+          requested_at: string
+          sent_at: string | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      mark_invoice_sent: {
+        Args: { p_invoice_id: string }
+        Returns: {
+          accounting_submitted_at: string | null
+          amount: number | null
+          base_amount: number | null
+          cc_fee_applied: boolean
+          client_id: string | null
+          closed_at: string | null
+          course_id: string
+          created_at: string
+          due_date: string | null
+          id: string
+          invoice_number: string | null
+          is_placeholder: boolean
+          issued_at: string | null
+          notes: string | null
+          paid_at: string | null
+          participants: number | null
+          po_number: string | null
+          quote_id: string | null
+          requested_at: string
+          sent_at: string | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       owns_course: { Args: { p_course_id: string }; Returns: boolean }
+      request_funding_info: {
+        Args: { p_note: string; p_request_id: string }
+        Returns: {
+          course_id: string
+          created_at: string
+          id: string
+          needed_by: string | null
+          prior_funding_note: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewer_id: string | null
+          status: Database["public"]["Enums"]["funding_status"]
+          student_fee: number
+          submitted_at: string | null
+          total_funding: number | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "funding_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      require_iahv_admin: { Args: never; Returns: undefined }
+      set_user_role: {
+        Args: {
+          p_role: Database["public"]["Enums"]["user_role"]
+          p_user_id: string
+        }
+        Returns: {
+          campus_id: string | null
+          created_at: string
+          email: string
+          id: string
+          name: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "profiles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      settle_quote: {
+        Args: {
+          p_quote_id: string
+          p_status: Database["public"]["Enums"]["quote_status"]
+        }
+        Returns: {
+          amount: number | null
+          client_id: string | null
+          course_id: string
+          created_at: string
+          id: string
+          issued_at: string | null
+          notes: string | null
+          quote_number: string | null
+          requested_at: string
+          status: Database["public"]["Enums"]["quote_status"]
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "quotes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       storage_course_id: { Args: { p_name: string }; Returns: string }
     }
     Enums: {
