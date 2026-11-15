@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+/* Design tokens from "SKY Campus Connect – App Design v1". */
+@theme {
+  --font-sans: var(--font-dm-sans), system-ui, sans-serif;
+
+  --color-ink: #0b1f45; /* primary text, admin header */
+  --color-ink-soft: #2c3e63; /* secondary text, nav links */
+  --color-body: #3a4b6e; /* long-form paragraphs */
+  --color-muted: #4a5b7a; /* hints, labels */
+  --color-info-text: #1e3a75;
+
+  --color-brand: #2a5fd6;
+  --color-brand-dark: #1e4ab0;
+  --color-brand-bright: #3a72e9;
+  --color-brand-light: #9dbaf5;
+  --color-brand-pale: #bfd3ff;
+
+  --color-tint: #eef3fe; /* selected cards, info callouts */
+  --color-surface: #f6f9ff; /* app background */
+  --color-hero: #f3f7ff;
+  --color-faint: #fbfcff;
+  --color-dot: #f1f4fa;
+
+  --color-line: #dce5f7; /* card borders */
+  --color-line-2: #e3eaf8; /* header borders, "to do" segments */
+  --color-line-3: #edf2fc; /* row dividers */
+  --color-field: #b9caec; /* input borders */
+  --color-chip: #c9d7f3;
+  --color-skip: #9aa9c4;
+
+  --color-amber: #e9a23b;
+  --color-warn-bg: #fdf1de;
+  --color-warn-border: #f2c98a;
+  --color-warn-fg: #8a4b05;
+  --color-warn-text: #6b3a04;
+
+  --color-danger-bg: #fde8e6;
+  --color-danger-border: #f3b4ad;
+  --color-danger-fg: #9b1c12;
+  --color-danger-text: #7a160e;
+
+  --color-ok-bg: #e8f4ee;
+  --color-ok-border: #a9d6bd;
+  --color-ok-fg: #17603a;
+  --color-ok-text: #124d2f;
+}
+
+/* In the base layer so Tailwind utilities (e.g. text-white on a link) win. */
+@layer base {
+  body {
+    background: #ffffff;
+    color: var(--color-ink);
+  }
+
+  a {
+    color: var(--color-brand);
+  }
+  a:hover {
+    color: var(--color-brand-dark);
+  }
+}
