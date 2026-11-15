@@ -116,7 +116,10 @@ describe("courseCard", () => {
   it("describes drafts, waiting steps and closed courses", () => {
     expect(courseCard(toCourse(row({ course_type: null }))).statusLabel).toBe("Draft");
     const waiting = toCourse(row({ course_steps: [1, 2].map((n) => ({ step_no: n, status: "done" })).concat([{ step_no: 3, status: "waiting" }]) }));
-    expect(courseCard(waiting)).toMatchObject({ statusLabel: "Waiting on IAHV", tone: "waiting" });
+    expect(courseCard(waiting, { funding: { status: "submitted", reviewNote: null, submittedAt: null }, invoice: null })).toMatchObject({
+      statusLabel: "Waiting on IAHV",
+      tone: "waiting",
+    });
     const closed = toCourse(row({ course_steps: Array.from({ length: 8 }, (_, i) => ({ step_no: i + 1, status: "done" })) }));
     expect(courseCard(closed).statusLabel).toBe("Closed");
   });

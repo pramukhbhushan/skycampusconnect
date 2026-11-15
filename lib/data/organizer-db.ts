@@ -10,7 +10,16 @@ import { DEFAULT_PRICING, type PricingConstants } from "@/lib/pricing";
 import type { Course, UploadedDocument } from "@/lib/types";
 import { requireRole, type CurrentUser } from "@/lib/supabase/require-role";
 import { createClient } from "@/lib/supabase/server";
-import { COURSE_SELECT, formatFileSize, formatMonthDay, initialsOf, openPriorCourses, toCourse } from "./course-mapper";
+import {
+  COURSE_SELECT,
+  formatFileSize,
+  formatMonthDay,
+  initialsOf,
+  openPriorCourses,
+  toCourse,
+  toProgress,
+  type CourseProgress,
+} from "./course-mapper";
 
 /** The signed-in organizer, checked once per request. */
 export const getMe = cache(async (): Promise<CurrentUser & { initials: string }> => {
@@ -18,8 +27,8 @@ export const getMe = cache(async (): Promise<CurrentUser & { initials: string }>
   return { ...me, initials: initialsOf(me.name, me.email) };
 });
 
-/** My courses, soonest first (drafts without dates last). */
-export const listMyCourses = cache(async (): Promise<Course[]> => {
+// One query per request for all of my courses, shared by the functions below.
+const myCourseRows = cache(async () => {
   const me = await getMe();
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -28,8 +37,16 @@ export const listMyCourses = cache(async (): Promise<Course[]> => {
     .eq("organizer_id", me.id)
     .order("start_date", { ascending: true, nullsFirst: false });
   if (error) throw new Error(`Could not load your courses: ${error.message}`);
-  return data.map(toCourse);
+  return data;
 });
+
+/** My courses, soonest first (drafts without dates last). */
+export const listMyCourses = cache(async (): Promise<Course[]> => (await myCourseRows()).map(toCourse));
+
+/** My courses with their funding and invoice state, for the "My courses" cards. */
+export async function listMyCoursesWithProgress(): Promise<{ course: Course; progress: CourseProgress }[]> {
+  return (await myCourseRows()).map((row) => ({ course: toCourse(row), progress: toProgress(row) }));
+}
 
 /** One of my courses, or null if it doesn't exist or isn't mine. */
 export async function getMyCourse(courseId: string): Promise<Course | null> {

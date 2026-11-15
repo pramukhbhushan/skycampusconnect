@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowRight, ChatBubble, Plus } from "@/components/icons";
 import { ProgressSegments, StatusPill } from "@/components/ui";
 import { formatRange } from "@/lib/dates";
-import { getMe, listMyCourses } from "@/lib/data/organizer-db";
+import { getMe, listMyCoursesWithProgress } from "@/lib/data/organizer-db";
 import { courseCard } from "@/lib/organizer/card";
 import { COURSE_TYPE_LABEL } from "@/lib/pricing";
 import { STEP_NAMES, currentStep, describeSteps, doneCount } from "@/lib/steps";
@@ -29,8 +29,8 @@ const GUIDES = [
 
 export default async function OrganizerHome() {
   const me = await getMe();
-  const courses = await listMyCourses();
-  const myCourses = courses.map((course) => ({ course, card: courseCard(course) }));
+  const rows = await listMyCoursesWithProgress();
+  const myCourses = rows.map(({ course, progress }) => ({ course, card: courseCard(course, progress) }));
   const firstName = me.name.split(" ")[0] || "there";
   const active = myCourses.filter(({ course }) => course.type !== null);
   const summary = active.slice(0, 2);
