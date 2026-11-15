@@ -68,3 +68,35 @@ replaced decision is marked `Superseded by <NNN>`.
 **Concerns raised:** None.
 
 **Revisit if:** most real courses are university-funded (then do A-5.1 before A-3.1).
+
+## 004. Defaults for the open questions affecting organizer work
+**Date:** 2026-11-15
+**Status:** Accepted (items marked B-owned stand until Bhushan decides otherwise)
+
+**Decision:** Aryan accepted Claude's recommended default for each open question below, in one batch.
+
+**Context:** A review of every remaining sprint listed the questions that need a product decision. Most had a safe, reversible default; deciding them together unblocks Sprints 3 to 7.
+
+| # | Question | Decision | Revisit if |
+|---|---|---|---|
+| a | Earlier unclosed courses when requesting funding (plan-v3 Q2; B-owned) | Warning only, not a block | IAHV wants it enforced; then add the check to `save_funding_request()` |
+| b | Who marks step 3 done when IAHV approves funding | Claude adds a trigger, if Bhushan agrees (his `approve_funding()` doesn't touch `course_steps`) | Bhushan prefers to do it in his function |
+| c | Organizers can insert `invoices` rows directly (bypassing `request_invoice()`) | Tighten it, coordinated with Bhushan (his `access-rules.sql` relies on the current policy) | — |
+| d | Journey integration (plan-v3 Q3) | Manual only: steps 6 to 8 stay checklists and typed values | IAHV provides a Journey API or CSV export |
+| e | How end-to-end tests sign in (A-3.3) | A separate test Supabase project with email/password users, never the live project | Keeping a second project becomes too costly |
+| f | Sharing form templates (plan-v3 Q9; A-owned) | Private to each person (as the database already enforces) | Admins ask to share reminder templates |
+| g | Which fields templates keep | As listed in plan-v3 (never dates, amounts or files) | — |
+| h | Partial student fee (plan-v3 Q4) | Allowed: any per-student amount when students pay part | IAHV says the fee is all-or-nothing |
+| i | Dropouts and cancellations (plan-v3 Q5) | No automatic invoice change; IAHV adjusts by hand | IAHV defines a refund rule |
+| j | Canada, CAD and GST (plan-v3 Q6) | USD only for now | A Canadian course needs a real invoice |
+| k | One Supabase project or separate dev and production | Split before real data arrives | — |
+| l | Who can sign up as an organizer | Any Google account, for now | Unknown accounts appear, or before launch (then also revisit 001) |
+| m | Organizer home "assistant" chat (not in any sprint) | Leave as a placeholder | Someone schedules it |
+
+**Why:** Each default is the smallest, most reversible choice that lets the planned work continue.
+
+**Accepted downsides:** (a) IAHV must catch unclosed earlier courses themselves; (l) anyone with a Google account can create an organizer profile until this is revisited.
+
+**Concerns raised:** (l) The live project already has 13 organizer profiles, so it's worth checking for unknown accounts.
+
+**Revisit if:** see each row.
