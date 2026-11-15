@@ -113,3 +113,22 @@ export function openPriorCourses(course: Course, all: Course[]): Course[] {
       c.steps[7] !== "done",
   );
 }
+
+/**
+ * Funding and invoice state of a course, for the "My courses" card text. Kept separate from
+ * `Course` because lib/types.ts is frozen.
+ */
+export type CourseProgress = {
+  funding: { status: "draft" | "submitted" | "approved" | "needs_info"; reviewNote: string | null; submittedAt: string | null } | null;
+  invoice: { status: string; number: string | null; requestedAt: string } | null;
+};
+
+export function toProgress(row: CourseRow): CourseProgress {
+  const f = row.funding_requests;
+  const open = row.invoices.filter((i) => i.status !== "rejected").sort((a, b) => b.requested_at.localeCompare(a.requested_at));
+  const inv = open[0];
+  return {
+    funding: f ? { status: f.status, reviewNote: f.review_note, submittedAt: f.submitted_at } : null,
+    invoice: inv ? { status: inv.status, number: inv.invoice_number, requestedAt: inv.requested_at } : null,
+  };
+}

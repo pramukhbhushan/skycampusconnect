@@ -45,3 +45,58 @@ replaced decision is marked `Superseded by <NNN>`.
 **Concerns raised:** None.
 
 **Revisit if:** the funding form (A-5.1) lets organizers choose an agreement status before Sprint 6; then make the change with A-5.1.
+
+## 003. Build PDF uploads first, then the invoice request (A-3.1), then the funding request (A-5.1)
+**Date:** 2026-11-15
+**Status:** Accepted
+
+**Decision:** Next organizer work is, in order: a shared PDF upload piece (Storage upload, `documents` row, reusable component), then A-3.1 `requestInvoice`, then A-5.1 `submitFundingRequest` (pulled forward from Sprint 5), then A-2.3 card text.
+
+**Context:** Steps 3 and 4 were still mockups, so courses never got past them. Both forms require PDFs in B's Zod schemas (at least one proof-of-funds PDF for funding; at least one signed-agreement PDF for the invoice), and no upload code existed. The Storage bucket and its policies already existed (A-0.2). B's admin transition functions (`approve_funding`, `issue_invoice_number`, ...) were already live, so submissions could be acted on immediately. A-2.3's card text depends on funding/invoice states that don't exist until those forms save.
+
+**Options considered:**
+- A-3.1 then A-5.1: highest value first, but uploads would be buried inside A-3.1.
+- A-5.1 then A-3.1: follows the course order, same hidden upload dependency.
+- Uploads first, then A-3.1, then A-5.1 (chosen): the shared piece is built and tested once; each form PR stays small; the invoice can reuse the step 3 PDF as plan-v3 wants.
+- A-2.3 first: its text would be redone once steps 3 and 4 save.
+- Relax the PDF requirement: fastest, but skips a real IAHV rule and needs B to change schemas.
+
+**Why:** Both forms are blocked on the same missing piece; build it once. The invoice goes before funding because the plan ranks it highest and students-pay courses can use it right away.
+
+**Accepted downsides:** One more PR before a "Submit" button works; part of A-5.2 moves out of Sprint 5.
+
+**Concerns raised:** None.
+
+**Revisit if:** most real courses are university-funded (then do A-5.1 before A-3.1).
+
+## 004. Defaults for the open questions affecting organizer work
+**Date:** 2026-11-15
+**Status:** Accepted (items marked B-owned stand until Bhushan decides otherwise)
+
+**Decision:** Aryan accepted Claude's recommended default for each open question below, in one batch.
+
+**Context:** A review of every remaining sprint listed the questions that need a product decision. Most had a safe, reversible default; deciding them together unblocks Sprints 3 to 7.
+
+| # | Question | Decision | Revisit if |
+|---|---|---|---|
+| a | Earlier unclosed courses when requesting funding (plan-v3 Q2; B-owned) | Warning only, not a block | IAHV wants it enforced; then add the check to `save_funding_request()` |
+| b | Who marks step 3 done when IAHV approves funding | Claude adds a trigger, if Bhushan agrees (his `approve_funding()` doesn't touch `course_steps`) | Bhushan prefers to do it in his function |
+| c | Organizers can insert `invoices` rows directly (bypassing `request_invoice()`) | Tighten it, coordinated with Bhushan (his `access-rules.sql` relies on the current policy) | — |
+| d | Journey integration (plan-v3 Q3) | Manual only: steps 6 to 8 stay checklists and typed values | IAHV provides a Journey API or CSV export |
+| e | How end-to-end tests sign in (A-3.3) | A separate test Supabase project with email/password users, never the live project | Keeping a second project becomes too costly |
+| f | Sharing form templates (plan-v3 Q9; A-owned) | Private to each person (as the database already enforces) | Admins ask to share reminder templates |
+| g | Which fields templates keep | As listed in plan-v3 (never dates, amounts or files) | — |
+| h | Partial student fee (plan-v3 Q4) | Allowed: any per-student amount when students pay part | IAHV says the fee is all-or-nothing |
+| i | Dropouts and cancellations (plan-v3 Q5) | No automatic invoice change; IAHV adjusts by hand | IAHV defines a refund rule |
+| j | Canada, CAD and GST (plan-v3 Q6) | USD only for now | A Canadian course needs a real invoice |
+| k | One Supabase project or separate dev and production | Split before real data arrives | — |
+| l | Who can sign up as an organizer | Any Google account, for now | Unknown accounts appear, or before launch (then also revisit 001) |
+| m | Organizer home "assistant" chat (not in any sprint) | Leave as a placeholder | Someone schedules it |
+
+**Why:** Each default is the smallest, most reversible choice that lets the planned work continue.
+
+**Accepted downsides:** (a) IAHV must catch unclosed earlier courses themselves; (l) anyone with a Google account can create an organizer profile until this is revisited.
+
+**Concerns raised:** (l) The live project already has 13 organizer profiles, so it's worth checking for unknown accounts.
+
+**Revisit if:** see each row.
