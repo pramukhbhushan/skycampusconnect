@@ -1,19 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import { StatusPill } from "@/components/ui";
 import type { AppUser } from "@/lib/data/settings";
+import { roleAction } from "../actions";
+import { FormResult } from "./form-result";
 
-// TODO(backend): call setUserRole (server action, admins only) and refresh. Until
-// sign-in lands this only changes the screen, which the page banner says.
-export function UsersTable({ users: initial }: { users: AppUser[] }) {
-  const [users, setUsers] = useState(initial);
+// B-2.2: changes go through roleAction, which refuses to remove the last admin
+// or your own admin access. TODO(backend): roleAction calls set_user_role in Postgres.
+export function UsersTable({ users, currentUserId }: { users: AppUser[]; currentUserId: string }) {
   const [search, setSearch] = useState("");
+  const [state, action, pending] = useActionState(roleAction, null);
 
   const q = search.trim().toLowerCase();
   const visible = users.filter((u) => !q || [u.name, u.email, u.campus ?? ""].some((v) => v.toLowerCase().includes(q)));
-  const toggle = (id: string) =>
-    setUsers((list) => list.map((u) => (u.id === id ? { ...u, role: u.role === "iahv_admin" ? "organizer" : "iahv_admin" } : u)));
 
   return (
     <div className="flex flex-col gap-3">
@@ -28,6 +28,7 @@ export function UsersTable({ users: initial }: { users: AppUser[] }) {
           className="min-h-11 rounded-[10px] border border-field bg-white px-3.5 text-[15px] text-ink"
         />
       </div>
+      <FormResult state={state} />
       <div className="overflow-x-auto rounded-[14px] border border-line">
         <table className="w-full min-w-[720px] border-collapse text-sm">
           <thead>
@@ -40,25 +41,34 @@ export function UsersTable({ users: initial }: { users: AppUser[] }) {
             </tr>
           </thead>
           <tbody>
-            {visible.map((u) => (
-              <tr key={u.id} className="border-t border-line-3">
-                <td className="px-4 py-3 font-semibold">{u.name}</td>
-                <td className="px-2 py-3">{u.email}</td>
-                <td className="px-2 py-3 text-muted">{u.campus ?? "—"}</td>
-                <td className="px-2 py-3">
-                  <StatusPill tone={u.role === "iahv_admin" ? "info" : "ok"}>{u.role === "iahv_admin" ? "IAHV admin" : "Organizer"}</StatusPill>
-                </td>
-                <td className="py-3 pr-4 pl-2 text-right">
-                  <button
-                    type="button"
-                    onClick={() => toggle(u.id)}
-                    className="min-h-10 cursor-pointer rounded-[10px] border border-field px-3.5 font-semibold whitespace-nowrap text-brand-dark hover:bg-surface"
-                  >
-                    {u.role === "iahv_admin" ? "Make organizer" : "Make admin"}
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {visible.map((u) => {
+              const admin = u.role === "iahv_admin";
+              return (
+                <tr key={u.id} className="border-t border-line-3">
+                  <td className="px-4 py-3 font-semibold">
+                    {u.name}
+                    {u.id === currentUserId && <span className="ml-1.5 text-xs font-normal text-muted">(you)</span>}
+                  </td>
+                  <td className="px-2 py-3">{u.email}</td>
+                  <td className="px-2 py-3 text-muted">{u.campus ?? "—"}</td>
+                  <td className="px-2 py-3">
+                    <StatusPill tone={admin ? "info" : "ok"}>{admin ? "IAHV admin" : "Organizer"}</StatusPill>
+                  </td>
+                  <td className="py-3 pr-4 pl-2 text-right">
+                    <form action={action}>
+                      <input type="hidden" name="userId" value={u.id} />
+                      <input type="hidden" name="role" value={admin ? "organizer" : "iahv_admin"} />
+                      <button
+                        disabled={pending}
+                        className="min-h-10 cursor-pointer rounded-[10px] border border-field px-3.5 font-semibold whitespace-nowrap text-brand-dark hover:bg-surface disabled:cursor-wait disabled:opacity-60"
+                      >
+                        {admin ? "Make organizer" : "Make admin"}
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              );
+            })}
             {visible.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-muted">No one matches “{search}”.</td>

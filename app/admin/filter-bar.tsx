@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { cx } from "@/components/ui";
-import type { AdminFilters, Country } from "@/lib/data/admin";
+import type { AdminFilters, Country } from "@/lib/admin/filters";
 import { STEP_NAMES } from "@/lib/steps";
 import { adminHref, hasFilters } from "./filters";
 
@@ -81,6 +81,12 @@ export function FilterBar({ filters, campuses }: { filters: AdminFilters; campus
           <option value="CA">Canada</option>
         </select>
       </div>
+      <a
+        href={`/admin/export${adminHref(filters).replace("/admin", "")}`}
+        className="ml-auto inline-flex min-h-11 items-center rounded-[10px] border border-field bg-white px-4 text-sm font-semibold text-brand-dark no-underline hover:bg-surface"
+      >
+        Download CSV
+      </a>
       {hasFilters(filters) && (
         <Link
           href={adminHref({ queue: filters.queue, campus: null, step: null, country: null, q: "" })}
