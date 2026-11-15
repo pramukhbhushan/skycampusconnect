@@ -138,6 +138,39 @@ select pg_temp.expect_rows('organizer adds a missing campus', $$select 1 from pu
 select pg_temp.expect_affected('organizer cannot rename a campus',
   $$update public.campuses set name = 'Renamed' where name = 'Example State University'$$, 0);
 
+-- ---- Client privacy (DECISIONS.md 001) ----------------------------------------------
+reset role;
+select set_config('request.jwt.claim.sub', '', false); -- trusted SQL, no signed-in user
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('33333333-3333-3333-3333-333333333333', 'admin@example.test', '{"full_name": "Admin"}');
+update public.profiles set role = 'iahv_admin' where id = '33333333-3333-3333-3333-333333333333';
+set role authenticated;
+select pg_temp.act_as(:maya);
+insert into public.clients (id, full_name, attn, email, created_by)
+  values ('ffffffff-0000-0000-0000-000000000001', 'University of Maryland, College Park', 'Pat Payable', 'ap@example.test', :maya);
+insert into public.clients (id, full_name, created_by)
+  values ('ffffffff-0000-0000-0000-000000000002', 'Maya Unused Client', :maya);
+update public.courses set client_id = 'ffffffff-0000-0000-0000-000000000001' where id = 'aaaaaaaa-0000-0000-0000-000000000001';
+select pg_temp.expect_rows('creator sees own clients', 'select 1 from public.clients', 2);
+select pg_temp.act_as(:priya);
+select pg_temp.expect_rows('other organizer sees no one else''s clients', 'select 1 from public.clients', 0);
+select pg_temp.expect_affected('other organizer cannot edit Maya''s client',
+  $$update public.clients set email = 'x@evil.test'$$, 0);
+insert into public.clients (id, full_name, created_by)
+  values ('ffffffff-0000-0000-0000-000000000003', 'Priya Client', :priya);
+select pg_temp.expect_rows('organizer sees the client she created', 'select 1 from public.clients', 1);
+select pg_temp.expect_fail('organizer creates a client in someone else''s name',
+  $$insert into public.clients (full_name, created_by) values ('Fake', '11111111-1111-1111-1111-111111111111')$$);
+select pg_temp.act_as('33333333-3333-3333-3333-333333333333');
+select pg_temp.expect_rows('admin sees every client', 'select 1 from public.clients', 3);
+-- A client created by an admin and billed on Maya's course is visible to Maya.
+insert into public.clients (id, full_name, created_by)
+  values ('ffffffff-0000-0000-0000-000000000004', 'Admin-entered Client', '33333333-3333-3333-3333-333333333333');
+update public.courses set client_id = 'ffffffff-0000-0000-0000-000000000004' where id = 'aaaaaaaa-0000-0000-0000-000000000001';
+select pg_temp.act_as(:maya);
+select pg_temp.expect_rows('organizer sees the client billed on her course',
+  $$select 1 from public.clients where id = 'ffffffff-0000-0000-0000-000000000004'$$, 1);
+
 reset role;
 set role anon;
 select pg_temp.expect_fail('anonymous visitor creates a course',
@@ -150,6 +183,7 @@ reset role;
 set role anon;
 select pg_temp.expect_fail('anonymous visitor reads funding', 'select * from public.funding_requests');
 select pg_temp.expect_fail('anonymous visitor reads templates', 'select * from public.form_templates');
+select pg_temp.expect_fail('anonymous visitor reads clients', 'select * from public.clients');
 reset role;
 
 \echo ALL ORGANIZER RULE CHECKS PASSED
