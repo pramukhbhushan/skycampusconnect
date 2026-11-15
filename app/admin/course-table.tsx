@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ProgressSegments, StatusPill, cx } from "@/components/ui";
+import { remindHref } from "@/lib/admin/links";
 import type { AdminDashboardRow } from "@/lib/data/admin";
 
 const actionBase = "inline-flex min-h-10 items-center rounded-[10px] px-3.5 font-semibold whitespace-nowrap no-underline";
@@ -37,7 +38,7 @@ export function CourseTable({ rows }: { rows: AdminDashboardRow[] }) {
               Clear
             </button>
             <Link
-              href="/admin/reminders"
+              href={remindHref(rows.filter((r) => selected.has(r.id)).map((r) => r.id))}
               className="inline-flex min-h-11 items-center rounded-[10px] bg-white px-[18px] text-sm font-bold text-ink no-underline hover:text-ink"
             >
               Email reminder →
@@ -91,6 +92,7 @@ export function CourseTable({ rows }: { rows: AdminDashboardRow[] }) {
                 <td className="px-2 py-3.5"><StatusPill tone={r.tone} className="py-[5px]">{r.statusLabel}</StatusPill></td>
                 <td className="px-2 py-3.5">
                   <span className={r.late ? "font-semibold text-danger-fg" : "text-ink-soft"}>{r.dueLabel}</span>
+                  {r.flagged && <span className="block text-xs font-semibold text-danger-fg">Stuck over 10 business days</span>}
                 </td>
                 <td className="py-3.5 pr-4 pl-2 text-right">
                   <Link

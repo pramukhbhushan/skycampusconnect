@@ -1,39 +1,45 @@
-// Sample data until the backend lands. Owner: Engineer B (Bhushan) (sprint-planning.md 1.1).
-// Swap the function bodies for Supabase queries; keep the signatures.
+// Admin data. Owner: Engineer B (Bhushan) (sprint-planning.md 1.1).
+// Sample facts + admin changes (admin-store.ts) until the backend lands. In B-1.1 the
+// facts come from Supabase; the status rules (lib/admin/derive.ts) stay the same.
 
+import { deriveAdminStatus, type AdminStatus, type CourseFacts } from "@/lib/admin/derive";
+import { remindHref } from "@/lib/admin/links";
+import { todayIso } from "@/lib/admin/time";
 import { formatRange } from "@/lib/dates";
 import { computeFee } from "@/lib/pricing";
+import { connection } from "next/server";
 import { STEP_NAMES, currentStep } from "@/lib/steps";
-import type { AdminCourseRow, AdminQueue, Course, Organizer, StepStatus } from "@/lib/types";
+import type { AdminQueue, Course, Organizer, StepStatus, Tone } from "@/lib/types";
+import { adminStore, type StoredActivity } from "./admin-store";
 import { courses, getCourse } from "./courses";
 import { getOrganizer } from "./organizer";
+import { getPricing } from "./settings";
 
-export const adminUser = { name: "IAHV Admin", initials: "IA", email: "admin@iahv.org" };
+export { adminUser } from "./admin-user";
 
-export type Country = "US" | "CA";
-
-/** Dashboard filters, as read from the URL (see app/admin/filters.ts). */
-export type AdminFilters = {
-  queue: AdminQueue | "all";
-  campus: string | null;
-  step: number | null; // 1-8: the step the course is on
-  country: Country | null;
-  q: string; // search: course, campus or organizer
-};
-
-export const NO_FILTERS: AdminFilters = { queue: "all", campus: null, step: null, country: null, q: "" };
+import { NO_FILTERS, type AdminFilters, type Country } from "@/lib/admin/filters";
+export { NO_FILTERS, type AdminFilters, type Country };
 
 /** One row of the admin dashboard table. */
-export type AdminDashboardRow = AdminCourseRow & {
+export type AdminDashboardRow = {
+  courseId: string;
   id: string;
   name: string;
   campus: string;
   country: Country;
   organizer: string;
+  organizerEmail: string;
   dates: string;
   steps: StepStatus[];
   step: number;
   stepName: string;
+  queue: AdminQueue;
+  statusLabel: string;
+  tone: Tone;
+  dueLabel: string;
+  late: boolean;
+  flagged: boolean;
+  action: { label: string; href: string; primary: boolean };
 };
 
 export type AdminDashboard = {
@@ -44,36 +50,91 @@ export type AdminDashboard = {
   campuses: string[];
 };
 
-const detail = (id: string) => `/admin/courses/${id}`;
-const reminders = "/admin/reminders";
+// ---- Sample facts (what Supabase will store) ------------------------------
 
-type SampleRow = AdminCourseRow & { country: Country };
+type SampleFacts = Omit<CourseFacts, "id" | "hasType" | "startDate" | "endDate"> & { country: Country };
 
-const adminRows: SampleRow[] = [
-  { courseId: "umd-spring-2027", country: "US", queue: "funding", statusLabel: "Funding approval", tone: "waiting", dueLabel: "Needed by Nov 26", late: false, action: { label: "Review & approve", href: detail("umd-spring-2027"), primary: true } },
-  { courseId: "purdue-winter-2027", country: "US", queue: "invoice", statusLabel: "Invoice requested", tone: "waiting", dueLabel: "Waiting 3 business days", late: false, action: { label: "Enter invoice #", href: detail("purdue-winter-2027"), primary: true } },
-  { courseId: "ucla-spring-2027", country: "US", queue: "quote", statusLabel: "Quote requested", tone: "waiting", dueLabel: "Waiting 5 business days", late: true, action: { label: "Enter quote #", href: detail("ucla-spring-2027"), primary: true } },
-  { courseId: "gwu-fall-2026", country: "US", queue: "payment", statusLabel: "Pending payment", tone: "info", dueLabel: "Due Nov 30", late: false, action: { label: "Mark paid", href: detail("gwu-fall-2026"), primary: false } },
-  { courseId: "umd-fall-2026", country: "US", queue: "follow", statusLabel: "Accounting not submitted", tone: "late", dueLabel: "Course ended 6 days ago", late: true, action: { label: "Send reminder", href: reminders, primary: false } },
-  { courseId: "rutgers-fall-2026", country: "US", queue: "follow", statusLabel: "Payment overdue", tone: "late", dueLabel: "Due Nov 1 · 13 days late", late: true, action: { label: "Send reminder", href: reminders, primary: false } },
-  { courseId: "ut-austin-fall-2026", country: "US", queue: "follow", statusLabel: "Invoice not requested", tone: "late", dueLabel: "Course started yesterday", late: true, action: { label: "Send reminder", href: reminders, primary: false } },
-  { courseId: "toronto-winter-2026", country: "CA", queue: "none", statusLabel: "On track", tone: "ok", dueLabel: "—", late: false, action: { label: "Open", href: detail("toronto-winter-2026"), primary: false } },
-];
+const sample: Record<string, SampleFacts> = {
+  "umd-spring-2027": { country: "US", funding: { status: "submitted", neededBy: "2026-11-26" }, quote: null, invoice: null },
+  "purdue-winter-2027": {
+    country: "US", funding: null, quote: null,
+    invoice: { status: "requested", number: null, amount: 900, requestedOn: "2026-11-10", dueDate: "2027-02-21", accountingSubmitted: false },
+  },
+  "ucla-spring-2027": {
+    country: "US", funding: { status: "approved", neededBy: "2026-11-20" },
+    quote: { status: "requested", number: null, requestedOn: "2026-11-06", amount: 1300 }, invoice: null,
+  },
+  "gwu-fall-2026": {
+    country: "US", funding: { status: "approved", neededBy: "2026-09-30" }, quote: null,
+    invoice: { status: "accounting_submitted", number: "INV-24790", amount: 700, requestedOn: "2026-09-28", dueDate: "2026-11-30", accountingSubmitted: true },
+  },
+  "umd-fall-2026": {
+    country: "US", funding: null, quote: null,
+    invoice: { status: "sent_to_client", number: "INV-24817", amount: 1400, requestedOn: "2026-10-14", dueDate: "2026-12-08", accountingSubmitted: false },
+  },
+  "rutgers-fall-2026": {
+    country: "US", funding: { status: "approved", neededBy: "2026-09-01" }, quote: null,
+    invoice: { status: "accounting_submitted", number: "INV-24755", amount: 1100, requestedOn: "2026-09-10", dueDate: "2026-11-01", accountingSubmitted: true },
+  },
+  "ut-austin-fall-2026": { country: "US", funding: null, quote: null, invoice: null },
+  "toronto-winter-2026": { country: "CA", funding: null, quote: null, invoice: null },
+};
 
-function toDashboardRow(row: SampleRow): AdminDashboardRow {
-  const course = getCourse(row.courseId)!;
+/** Sample facts with every admin change applied. */
+export function getCourseFacts(courseId: string): (CourseFacts & { country: Country }) | undefined {
+  const s = sample[courseId];
+  const course = getCourse(courseId);
+  if (!s || !course) return undefined;
+  const funding = adminStore.funding.get(courseId);
+  const quote = adminStore.quotes.get(courseId);
+  const invoice = adminStore.invoices.get(courseId);
+  return {
+    id: courseId,
+    hasType: course.type !== null,
+    startDate: course.startDate,
+    endDate: course.endDate,
+    country: s.country,
+    funding: s.funding && { ...s.funding, ...(funding && { status: funding.status }) },
+    quote: s.quote && { ...s.quote, ...quote },
+    invoice: s.invoice && {
+      ...s.invoice,
+      ...invoice,
+      accountingSubmitted: s.invoice.accountingSubmitted || invoice?.status === "accounting_submitted",
+    },
+  };
+}
+
+export { remindHref };
+
+function toDashboardRow(courseId: string, today: string): AdminDashboardRow {
+  const course = getCourse(courseId)!;
   const organizer = getOrganizer(course.organizerId)!;
+  const facts = getCourseFacts(courseId)!;
+  const status = deriveAdminStatus(facts, today);
   const step = currentStep(course.steps);
   return {
-    ...row,
-    id: course.id,
+    courseId,
+    id: courseId,
     name: course.name,
     campus: course.university ?? "—",
+    country: facts.country,
     organizer: organizer.name,
+    organizerEmail: organizer.email,
     dates: formatRange(course.startDate, course.endDate),
     steps: course.steps,
     step,
     stepName: STEP_NAMES[step - 1] === "Sign-ups & orientation" ? "Sign-ups" : STEP_NAMES[step - 1],
+    queue: status.queue,
+    statusLabel: status.statusLabel,
+    tone: status.tone,
+    dueLabel: status.dueLabel,
+    late: status.late,
+    flagged: status.flagged,
+    action: {
+      label: status.actionLabel,
+      href: status.next.kind === "remind" ? remindHref([courseId], status.next.template) : `/admin/courses/${courseId}`,
+      primary: status.next.kind === "funding" || status.next.kind === "quote" || (status.next.kind === "invoice" && status.queue === "invoice"),
+    },
   };
 }
 
@@ -85,9 +146,14 @@ function matches(row: AdminDashboardRow, f: AdminFilters): boolean {
   return !q || [row.name, row.campus, row.organizer].some((v) => v.toLowerCase().includes(q));
 }
 
-// TODO(backend, B-1.1): one Supabase query with these filters in the WHERE clause.
-export function getAdminDashboard(filters: AdminFilters = NO_FILTERS): AdminDashboard {
-  const all = adminRows.map(toDashboardRow);
+/** Every course on the dashboard, with status worked out for today. */
+export function getAllAdminRows(today = todayIso()): AdminDashboardRow[] {
+  return Object.keys(sample).map((id) => toDashboardRow(id, today));
+}
+
+// TODO(backend, B-1.1): load facts with one Supabase query (campus/country/search in the WHERE clause).
+export function getAdminDashboard(filters: AdminFilters = NO_FILTERS, today = todayIso()): AdminDashboard {
+  const all = getAllAdminRows(today);
   const filtered = all.filter((r) => matches(r, filters));
 
   const queueCounts: AdminDashboard["queueCounts"] = { all: filtered.length, funding: 0, quote: 0, invoice: 0, payment: 0, follow: 0, none: 0 };
@@ -102,18 +168,20 @@ export function getAdminDashboard(filters: AdminFilters = NO_FILTERS): AdminDash
 
 // ---- Course detail (/admin/courses/[courseId]) -----------------------------
 
-export type ActivityEntry = { id: string; at: string; actor: string; text: string };
+export type ActivityEntry = StoredActivity & { id: string };
 
 export type AdminCourseDetail = {
   course: Course;
   organizer: Organizer;
   row: AdminDashboardRow;
+  facts: CourseFacts;
+  status: AdminStatus;
   activity: ActivityEntry[];
   estimatedFee: number | null;
 };
 
 // TODO(backend): read from the `events` table (written by logEvent, A-1.2), newest first.
-const sampleActivity: Record<string, Omit<ActivityEntry, "id">[]> = {
+const sampleActivity: Record<string, StoredActivity[]> = {
   "umd-spring-2027": [
     { at: "Nov 12, 2026 · 10:14 AM", actor: "Maya Chen", text: "Submitted the funding request with UMD_funding_approval_letter.pdf" },
     { at: "Nov 10, 2026 · 4:02 PM", actor: "Maya Chen", text: "Saved Journey course ID J-104582 (step 2)" },
@@ -132,29 +200,35 @@ const sampleActivity: Record<string, Omit<ActivityEntry, "id">[]> = {
     { at: "Sep 30, 2026 · 1:40 PM", actor: "Hannah Lee", text: "Submitted course accounting (step 7)" },
   ],
   "purdue-winter-2027": [
-    { at: "Nov 11, 2026 · 8:55 AM", actor: "Arjun Patel", text: "Requested the invoice (14 participants, pay by check)" },
+    { at: "Nov 10, 2026 · 8:55 AM", actor: "Arjun Patel", text: "Requested the invoice (14 participants, pay by check)" },
     { at: "Nov 4, 2026 · 5:10 PM", actor: "Arjun Patel", text: "Saved Journey course ID J-105310 (step 2)" },
   ],
 };
 
 export function listAdminCourseIds(): string[] {
-  return adminRows.map((r) => r.courseId);
+  return Object.keys(sample);
 }
 
-export function getAdminCourseDetail(courseId: string): AdminCourseDetail | undefined {
-  const sample = adminRows.find((r) => r.courseId === courseId);
+export async function getAdminCourseDetail(courseId: string, today?: string): Promise<AdminCourseDetail | undefined> {
+  await connection(); // reads admin changes and today's date, so never prerender it
+  today ??= todayIso();
   const course = courses.find((c) => c.id === courseId);
-  if (!sample || !course) return undefined;
+  const facts = getCourseFacts(courseId);
+  if (!course || !facts) return undefined;
   const organizer = getOrganizer(course.organizerId)!;
-  const activity = (sampleActivity[courseId] ?? [{ at: "—", actor: organizer.name, text: "Created the course" }]).map(
-    (a, i) => ({ ...a, id: `${courseId}-${i}` }),
-  );
+  const recorded = [...(adminStore.activity.get(courseId) ?? []), ...(sampleActivity[courseId] ?? [])];
+  const activity = (recorded.length ? recorded : [{ at: "—", actor: organizer.name, text: "Created the course" }]).map((a, i) => ({
+    ...a,
+    id: `${courseId}-${i}`,
+  }));
+  const pricing = await getPricing();
   return {
     course,
     organizer,
-    row: toDashboardRow(sample),
+    row: toDashboardRow(courseId, today),
+    facts,
+    status: deriveAdminStatus(facts, today),
     activity,
-    estimatedFee: course.type && course.estParticipants ? computeFee(course.type, course.estParticipants).total : null,
+    estimatedFee: course.type && course.estParticipants ? computeFee(course.type, course.estParticipants, false, pricing).total : null,
   };
 }
-

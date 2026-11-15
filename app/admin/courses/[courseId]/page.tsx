@@ -2,20 +2,23 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CourseStepper } from "@/components/course-stepper";
-import { Card, StatusPill, cx } from "@/components/ui";
-import { getAdminCourseDetail, listAdminCourseIds } from "@/lib/data/admin";
+import { Card, PdfBadge, StatusPill, cx } from "@/components/ui";
+import { Suspense } from "react";
+import { getAdminCourseDetail, listAdminCourseIds, remindHref } from "@/lib/data/admin";
+import { getCourse } from "@/lib/data/courses";
 import { formatDate, formatRange } from "@/lib/dates";
 import { COURSE_TYPE_LABEL, money } from "@/lib/pricing";
 import type { Funder } from "@/lib/types";
+import { ActionPanel } from "./action-panel";
 
-// Prerender every sample course; the real version reads by id from Supabase.
+// Prerender the page shell (header, loading state) for each known course. The course
+// itself renders per request inside <Suspense>, since it depends on today and admin changes.
 export function generateStaticParams() {
   return listAdminCourseIds().map((courseId) => ({ courseId }));
 }
 
 export async function generateMetadata({ params }: PageProps<"/admin/courses/[courseId]">): Promise<Metadata> {
-  const detail = getAdminCourseDetail((await params).courseId);
-  return { title: detail?.course.name ?? "Course" };
+  return { title: getCourse((await params).courseId)?.name ?? "Course" };
 }
 
 const FUNDER_LABEL: Record<Funder, string> = {
@@ -29,17 +32,40 @@ const FUNDING_STATUS: Record<string, string> = {
   draft: "Draft",
   submitted: "Submitted, waiting on IAHV",
   approved: "Approved",
-  needs_info: "Needs more information",
+  needs_info: "Sent back for more information",
 };
 
-// B-2.1: read-only course view for IAHV admins. Actions arrive in Sprints 3-6.
-export default async function AdminCoursePage({ params }: PageProps<"/admin/courses/[courseId]">) {
-  const detail = getAdminCourseDetail((await params).courseId);
-  if (!detail) notFound();
-  const { course, organizer, row, activity, estimatedFee } = detail;
-  const isReminder = row.action.href === "/admin/reminders";
+const DOC_STATUS: Record<string, string> = {
+  requested: "Requested, waiting on IAHV",
+  issued: "Issued",
+  sent_to_client: "Sent to the client",
+  accounting_submitted: "In course accounting",
+  paid: "Paid",
+  closed: "Closed",
+  rejected: "Rejected",
+  accepted: "Accepted",
+  revised: "Being revised",
+  expired: "Expired",
+};
 
-  const facts: [string, string][] = [
+// B-2.1 course view with B-3.1 / B-5.1 / B-6.1 actions and B-5.2 documents.
+export default function AdminCoursePage({ params }: PageProps<"/admin/courses/[courseId]">) {
+  // Status depends on today and on admin changes, so the course renders per request.
+  return (
+    <Suspense fallback={<div aria-busy="true" aria-label="Loading course" className="mx-auto mt-8 h-[640px] max-w-[1320px] animate-pulse rounded-[20px] bg-white" />}>
+      <CourseDetail params={params} />
+    </Suspense>
+  );
+}
+
+async function CourseDetail({ params }: Pick<PageProps<"/admin/courses/[courseId]">, "params">) {
+  const detail = await getAdminCourseDetail((await params).courseId);
+  if (!detail) notFound();
+  const { course, organizer, row, facts, status, activity, estimatedFee } = detail;
+  const documents = course.funding?.documents ?? [];
+  const reminderLink = remindHref([course.id], status.next.kind === "remind" ? status.next.template : undefined);
+
+  const facts1: [string, string][] = [
     ["Course type", course.type ? COURSE_TYPE_LABEL[course.type] : "Not set"],
     ["Format", course.format === "online" ? "Online" : "In person"],
     ["Dates", formatRange(course.startDate, course.endDate)],
@@ -49,6 +75,26 @@ export default async function AdminCoursePage({ params }: PageProps<"/admin/cour
     ["Paid by", course.funders.length ? course.funders.map((f) => FUNDER_LABEL[f]).join(", ") : "—"],
     ["Journey course ID", course.journeyCourseId ?? "Not posted yet"],
   ];
+
+  const money1: [string, string][] = [
+    ["Estimated course fee", estimatedFee !== null ? money(estimatedFee) : "—"],
+    [
+      "Funding request",
+      facts.funding
+        ? `${FUNDING_STATUS[facts.funding.status]}${course.funding ? ` · ${course.funding.totalFunding}` : ""}`
+        : course.funders.length === 1 && course.funders[0] === "students"
+          ? "Not needed (students pay)"
+          : "Not submitted",
+    ],
+  ];
+  if (facts.quote) money1.push(["Quote", `${facts.quote.number ?? "No number yet"} · ${DOC_STATUS[facts.quote.status]}`]);
+  money1.push([
+    "Invoice",
+    facts.invoice
+      ? `${facts.invoice.number ?? "No number yet"} · ${DOC_STATUS[facts.invoice.status]}${facts.invoice.amount ? ` · ${money(facts.invoice.amount)}` : ""}`
+      : "Not requested",
+  ]);
+  if (facts.invoice?.dueDate) money1.push(["Due date", formatDate(facts.invoice.dueDate)]);
 
   return (
     <>
@@ -63,8 +109,11 @@ export default async function AdminCoursePage({ params }: PageProps<"/admin/cour
               </span>
             </div>
             <div className="flex flex-col items-end gap-2">
-              <StatusPill tone={row.tone}>{row.statusLabel}</StatusPill>
-              <span className={cx("text-sm", row.late ? "font-semibold text-danger-fg" : "text-muted")}>{row.dueLabel}</span>
+              <StatusPill tone={status.tone}>{status.statusLabel}</StatusPill>
+              <span className={cx("text-sm", status.late ? "font-semibold text-danger-fg" : "text-muted")}>
+                {status.dueLabel}
+                {status.flagged && " · stuck over 10 business days"}
+              </span>
             </div>
           </div>
           <CourseStepper steps={course.steps} />
@@ -75,44 +124,35 @@ export default async function AdminCoursePage({ params }: PageProps<"/admin/cour
         <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-6">
           <Card aria-labelledby="details-title">
             <h2 id="details-title" className="text-xl font-bold">Course details</h2>
-            <dl className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-x-5 gap-y-4 text-sm">
-              {facts.map(([k, v]) => (
-                <div key={k}>
-                  <dt className="text-muted">{k}</dt>
-                  <dd className="mt-0.5 font-semibold">{v}</dd>
-                </div>
-              ))}
-            </dl>
+            <FactList facts={facts1} />
           </Card>
 
           <Card aria-labelledby="money-title">
             <h2 id="money-title" className="text-xl font-bold">Funding &amp; invoice</h2>
-            <dl className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-x-5 gap-y-4 text-sm">
-              <div>
-                <dt className="text-muted">Estimated course fee</dt>
-                <dd className="mt-0.5 font-semibold">{estimatedFee !== null ? money(estimatedFee) : "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-muted">Funding request</dt>
-                <dd className="mt-0.5 font-semibold">
-                  {course.funding
-                    ? `${FUNDING_STATUS[course.funding.status]} · ${course.funding.totalFunding}`
-                    : course.funders.includes("students") && course.funders.length === 1
-                      ? "Not needed (students pay)"
-                      : "Not submitted"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted">Invoice number</dt>
-                <dd className="mt-0.5 font-semibold">{course.invoiceNumber ?? "Not issued yet"}</dd>
-              </div>
-              {course.funding?.documents.length ? (
-                <div>
-                  <dt className="text-muted">Proof of funds</dt>
-                  <dd className="mt-0.5 font-semibold">{course.funding.documents.map((d) => d.name).join(", ")}</dd>
-                </div>
-              ) : null}
-            </dl>
+            <FactList facts={money1} />
+          </Card>
+
+          <Card aria-labelledby="docs-title" className="gap-4">
+            <h2 id="docs-title" className="text-xl font-bold">Documents</h2>
+            {documents.length ? (
+              <ul className="flex flex-col gap-2.5">
+                {documents.map((d) => (
+                  <li key={d.id} className="flex items-center justify-between gap-3 rounded-[14px] border border-line px-4 py-3">
+                    <span className="flex min-w-0 items-center gap-3">
+                      <PdfBadge />
+                      <span className="flex min-w-0 flex-col">
+                        <span className="truncate text-[15px] font-semibold">{d.name}</span>
+                        <span className="text-[13px] text-muted">Proof of funds · {d.size} · uploaded {d.uploadedOn}</span>
+                      </span>
+                    </span>
+                    {/* TODO(backend, B-5.2): link to a short-lived signed URL from Supabase Storage. */}
+                    <span className="text-[13px] text-muted">Opens once file storage is connected</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted">No documents uploaded yet.</p>
+            )}
           </Card>
 
           <Card aria-labelledby="activity-title">
@@ -131,60 +171,35 @@ export default async function AdminCoursePage({ params }: PageProps<"/admin/cour
         </div>
 
         <aside className="flex min-w-0 flex-[1_1_300px] flex-col gap-4">
-          <div className="flex flex-col gap-3 rounded-[20px] border border-line bg-white p-[22px]">
-            <h2 className="text-[17px] font-bold">Next action</h2>
-            {isReminder ? (
-              <Link
-                href="/admin/reminders"
-                className="inline-flex min-h-11 items-center justify-center rounded-xl bg-brand px-4 font-semibold text-white no-underline hover:text-white"
-              >
-                {row.action.label}
-              </Link>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  disabled
-                  className="inline-flex min-h-11 cursor-not-allowed items-center justify-center rounded-xl bg-brand/50 px-4 font-semibold text-white"
-                >
-                  {row.action.label}
-                </button>
-                <p className="text-[13px] text-muted">
-                  Approving and entering quote or invoice numbers arrive with the funding, invoice and quote sprints.
-                </p>
-              </>
-            )}
-          </div>
+          <ActionPanel courseId={course.id} facts={facts} next={status.next} remindHref={reminderLink} />
 
           <div className="flex flex-col gap-3 rounded-[20px] border border-line bg-white p-[22px]">
             <h2 className="text-[17px] font-bold">Organizer</h2>
-            <dl className="flex flex-col gap-2.5 text-sm">
-              <div>
-                <dt className="text-muted">Name</dt>
-                <dd className="font-semibold">{organizer.name}</dd>
-              </div>
-              <div>
-                <dt className="text-muted">Email</dt>
-                <dd className="font-semibold">
-                  <a href={`mailto:${organizer.email}`}>{organizer.email}</a>
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted">Campus</dt>
-                <dd className="font-semibold">{organizer.campus}</dd>
-              </div>
-            </dl>
-            <Link href="/admin/reminders" className="text-sm font-semibold">Email a reminder →</Link>
+            <FactList
+              facts={[
+                ["Name", organizer.name],
+                ["Campus", organizer.campus],
+              ]}
+              stacked
+            />
+            <a href={`mailto:${organizer.email}`} className="text-sm font-semibold">{organizer.email}</a>
+            <Link href={remindHref([course.id])} className="text-sm font-semibold">Email a reminder →</Link>
           </div>
-
-          {course.startDate && (
-            <p className="px-1 text-[13px] text-muted">
-              Course starts {formatDate(course.startDate)}
-              {course.endDate && course.endDate !== course.startDate ? ` and ends ${formatDate(course.endDate)}` : ""}.
-            </p>
-          )}
         </aside>
       </main>
     </>
+  );
+}
+
+function FactList({ facts, stacked }: { facts: [string, string][]; stacked?: boolean }) {
+  return (
+    <dl className={cx("text-sm", stacked ? "flex flex-col gap-2.5" : "grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-x-5 gap-y-4")}>
+      {facts.map(([k, v]) => (
+        <div key={k}>
+          <dt className="text-muted">{k}</dt>
+          <dd className="mt-0.5 font-semibold">{v}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }

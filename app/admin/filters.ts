@@ -1,6 +1,6 @@
 // Dashboard filters live in the URL (B-1.2), so a filtered view can be bookmarked or shared:
 //   /admin?queue=follow&campus=Purdue%20University&step=4&country=US&q=retreat
-import { NO_FILTERS, type AdminFilters, type Country } from "@/lib/data/admin";
+import { NO_FILTERS, type AdminFilters, type Country } from "@/lib/admin/filters";
 import type { AdminQueue } from "@/lib/types";
 
 type RawParams = Record<string, string | string[] | undefined>;
