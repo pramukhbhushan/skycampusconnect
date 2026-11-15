@@ -1,11 +1,11 @@
 "use server";
 // Sends reminder emails (B-4.3): one per course, To the organizer, From the admin.
-// TODO(backend): check requireUser("iahv_admin") and write each send to `email_log`.
+// Only IAHV admins may send. TODO(backend): write each send to `email_log`.
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { adminStore, logActivity } from "@/lib/data/admin-store";
-import { adminUser } from "@/lib/data/admin-user";
+import { getAdminMe } from "@/lib/data/admin-db";
 import { getRecipientsFor, mergeValuesFor } from "@/lib/data/reminders";
 import { getEmailTemplates } from "@/lib/data/settings";
 import { sendEmail } from "@/lib/email/client";
@@ -21,6 +21,8 @@ async function origin(): Promise<string> {
 }
 
 export async function sendRemindersAction(_: SendState, form: FormData): Promise<SendState> {
+  const me = await getAdminMe();
+  const adminUser = { name: me.name, email: me.email };
   const parsed = reminderEmailSchema.safeParse({
     courseIds: String(form.get("courseIds") ?? "").split(",").filter(Boolean),
     templateKey: form.get("templateKey"),
@@ -33,16 +35,16 @@ export async function sendRemindersAction(_: SendState, form: FormData): Promise
   const unknown = unknownFields(`${subject}\n${body}`);
   if (unknown.length) return { ok: false, error: `Unknown field: ${unknown.map((u) => `{{${u}}}`).join(", ")}. Fix the spelling or remove it.` };
 
-  const recipients = getRecipientsFor(courseIds);
+  const recipients = await getRecipientsFor(courseIds);
   if (!recipients.length) return { ok: false, error: "Pick at least one course." };
 
   const base = await origin();
-  const emails = recipients.map((r) => {
-    const values = mergeValuesFor(r.courseId, adminUser, base);
+  const emails = await Promise.all(recipients.map(async (r) => {
+    const values = await mergeValuesFor(r.courseId, adminUser, base);
     const s = renderTemplate(subject, values);
     const b = renderTemplate(body, values);
     return { r, subject: s.text, text: b.text, missing: [...new Set([...s.missing, ...b.missing])] };
-  });
+  }));
 
   const blocked = emails.filter((e) => e.missing.length);
   if (blocked.length) {

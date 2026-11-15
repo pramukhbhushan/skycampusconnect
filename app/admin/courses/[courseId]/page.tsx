@@ -4,22 +4,13 @@ import { notFound } from "next/navigation";
 import { CourseStepper } from "@/components/course-stepper";
 import { Card, PdfBadge, StatusPill, cx } from "@/components/ui";
 import { Suspense } from "react";
-import { getAdminCourseDetail, listAdminCourseIds, remindHref } from "@/lib/data/admin";
-import { getCourse } from "@/lib/data/courses";
+import { getAdminCourseDetail, remindHref } from "@/lib/data/admin";
 import { formatDate, formatRange } from "@/lib/dates";
 import { COURSE_TYPE_LABEL, money } from "@/lib/pricing";
 import type { Funder } from "@/lib/types";
 import { ActionPanel } from "./action-panel";
 
-// Prerender the page shell (header, loading state) for each known course. The course
-// itself renders per request inside <Suspense>, since it depends on today and admin changes.
-export function generateStaticParams() {
-  return listAdminCourseIds().map((courseId) => ({ courseId }));
-}
-
-export async function generateMetadata({ params }: PageProps<"/admin/courses/[courseId]">): Promise<Metadata> {
-  return { title: getCourse((await params).courseId)?.name ?? "Course" };
-}
+export const metadata: Metadata = { title: "Course" };
 
 const FUNDER_LABEL: Record<Funder, string> = {
   students: "Students",

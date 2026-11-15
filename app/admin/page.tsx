@@ -16,9 +16,6 @@ export default function AdminDashboard({ searchParams }: PageProps<"/admin">) {
           <h1 className="text-3xl font-bold">All SKY Campus courses</h1>
           <p className="text-[15px] text-muted">Every campus, every step. Pick a queue to see what needs you.</p>
         </div>
-        <span className="rounded-full border border-dashed border-skip px-3 py-1.5 text-[13px] font-semibold text-muted">
-          Sample data
-        </span>
       </div>
       {/* Filters come from the URL, which is only known per request. */}
       <Suspense fallback={<DashboardLoading />}>
@@ -30,7 +27,7 @@ export default function AdminDashboard({ searchParams }: PageProps<"/admin">) {
 
 async function Dashboard({ searchParams }: Pick<PageProps<"/admin">, "searchParams">) {
   const filters = parseAdminFilters(await searchParams);
-  const { rows, queueCounts, campuses } = getAdminDashboard(filters);
+  const { rows, queueCounts, campuses } = await getAdminDashboard(filters);
   return (
     <>
       <QueueTiles filters={filters} counts={queueCounts} />

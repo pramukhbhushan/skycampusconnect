@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Card } from "@/components/ui";
-import { adminUser } from "@/lib/data/admin-user";
+import { getAdminMe } from "@/lib/data/admin-db";
 import { getEmailTemplates, getPricing, getUsers } from "@/lib/data/settings";
 import { PricingForm } from "./pricing-form";
 import { TemplateEditor } from "./template-editor";
@@ -30,7 +30,7 @@ export default function SettingsPage() {
 }
 
 async function Sections() {
-  const [users, templates, pricing] = await Promise.all([getUsers(), getEmailTemplates(), getPricing()]);
+  const [me, users, templates, pricing] = await Promise.all([getAdminMe(), getUsers(), getEmailTemplates(), getPricing()]);
   return (
     <>
       <Card aria-labelledby="users-title" className="gap-4">
@@ -40,7 +40,7 @@ async function Sections() {
             Everyone signs in with Google and starts as an organizer. Only an IAHV admin can make someone an admin.
           </p>
         </div>
-        <UsersTable users={users} currentUserId={adminUser.id} />
+        <UsersTable users={users} currentUserId={me.id} />
       </Card>
 
       <Card aria-labelledby="emails-title" className="gap-4">

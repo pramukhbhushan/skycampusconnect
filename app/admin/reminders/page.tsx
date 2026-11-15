@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import type { ReminderTemplateKey } from "@/lib/admin/derive";
-import { adminUser } from "@/lib/data/admin-user";
+import { getAdminMe } from "@/lib/data/admin-db";
 import { REMINDER_GROUPS, getRecipientsFor, getReminderGroups, getSentReminders, mergeValuesFor } from "@/lib/data/reminders";
 import { getEmailTemplates } from "@/lib/data/settings";
 import { emailMode } from "@/lib/email/client";
@@ -34,13 +34,17 @@ async function Composer({ searchParams }: Pick<PageProps<"/admin/reminders">, "s
   const selectedIds = first(sp.courses).split(",").map((s) => s.trim()).filter(Boolean).slice(0, 50);
   const templateParam = first(sp.template) as ReminderTemplateKey;
 
-  const groups = getReminderGroups();
-  const selected = selectedIds.length ? getRecipientsFor(selectedIds) : null;
-  const templates = await getEmailTemplates();
+  const me = await getAdminMe();
+  const adminUser = { name: me.name, email: me.email };
+  const [groups, selected, templates] = await Promise.all([
+    getReminderGroups(),
+    selectedIds.length ? getRecipientsFor(selectedIds) : null,
+    getEmailTemplates(),
+  ]);
 
   // Preview values for everyone who could be on the list.
   const everyone = [...Object.values(groups).flat(), ...(selected ?? [])];
-  const values = Object.fromEntries(everyone.map((r) => [r.courseId, mergeValuesFor(r.courseId, adminUser)]));
+  const values = Object.fromEntries(await Promise.all(everyone.map(async (r) => [r.courseId, await mergeValuesFor(r.courseId, adminUser)] as const)));
 
   const initialTemplate: ReminderTemplateKey = KEYS.includes(templateParam)
     ? templateParam
