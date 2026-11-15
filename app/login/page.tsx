@@ -30,8 +30,7 @@ export default function LoginPage() {
         <Suspense>
           <div className="flex w-full max-w-[440px] flex-col gap-8">
             <LoginForm />
-            {/* Test accounts only: set GUEST_LOGIN=true locally or in the e2e server. */}
-            {process.env.GUEST_LOGIN === "true" && <PasswordForm />}
+            <PasswordForm />
           </div>
         </Suspense>
       </div>

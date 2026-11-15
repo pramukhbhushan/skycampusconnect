@@ -6,8 +6,9 @@ import type { AppUser } from "@/lib/data/settings";
 import { roleAction } from "../actions";
 import { FormResult } from "./form-result";
 
-// B-2.2: changes go through roleAction, which refuses to remove the last admin
-// or your own admin access. TODO(backend): roleAction calls set_user_role in Postgres.
+// B-2.2: everyone who has signed in. Changes go through roleAction -> set_user_role in
+// Postgres, which refuses to remove the last admin or your own admin access. A promoted
+// person gets the admin view on their next page load; no email is sent.
 export function UsersTable({ users, currentUserId }: { users: AppUser[]; currentUserId: string }) {
   const [search, setSearch] = useState("");
   const [state, action, pending] = useActionState(roleAction, null);

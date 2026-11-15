@@ -3,7 +3,7 @@
 //
 // Profile tests (ProfileTests.md) need the separate e2e Supabase project. Put its settings
 // in .env.e2e.local (gitignored). When that file exists, Playwright starts its OWN dev
-// server pointed at the e2e project with GUEST_LOGIN=true, so stop your `npm run dev`
+// server pointed at the e2e project, so stop your `npm run dev`
 // first (Next refuses two dev servers in one folder). Other port: E2E_PORT=3001.
 import { existsSync } from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
@@ -46,7 +46,6 @@ export default defineConfig({
       ? {
           NEXT_PUBLIC_SUPABASE_URL: process.env.E2E_SUPABASE_URL!,
           NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.E2E_SUPABASE_ANON_KEY ?? "",
-          GUEST_LOGIN: "true",
         }
       : {},
   },

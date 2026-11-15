@@ -4,9 +4,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // there is no request, so make it a no-op.
 vi.mock("next/server", () => ({ connection: async () => {} }));
 // Supabase stands in as the sample courses (B-1.1 reads them through admin-db.ts).
+const users = [
+  { id: "iahv-admin", name: "IAHV Admin", email: "admin@iahv.org", role: "iahv_admin" as const, campus: null },
+  { id: "maya", name: "Maya Chen", email: "maya@umd.edu", role: "organizer" as const, campus: "University of Maryland, College Park" },
+];
+const saveUserRole = vi.fn(async (id: string, role: "organizer" | "iahv_admin") => {
+  users.find((u) => u.id === id)!.role = role as never;
+  return { error: null };
+});
 vi.mock("@/lib/data/admin-db", async () => {
   const { ADMIN_COURSES } = await import("./fixtures");
   return {
+    loadUsers: async () => users.map((u) => ({ ...u })),
+    saveUserRole,
     loadAdminCourses: async () => ADMIN_COURSES,
     loadCourseEvents: async () => [],
     getAdminMe: async () => ({ id: "iahv-admin", name: "IAHV Admin", email: "admin@iahv.org", role: "iahv_admin", initials: "IA" }),
@@ -89,7 +99,9 @@ describe("admin actions move courses between queues (B-3.1, B-5.1, B-6.1)", () =
 
   it("protects the last admin and your own access", async () => {
     expect(await setUserRole("iahv-admin", "organizer", "iahv-admin")).toMatchObject({ ok: false });
+    expect(saveUserRole).not.toHaveBeenCalled();
     expect(await setUserRole("maya", "iahv_admin", "iahv-admin")).toMatchObject({ ok: true });
+    expect(saveUserRole).toHaveBeenCalledWith("maya", "iahv_admin");
     expect((await getUsers()).find((u) => u.id === "maya")!.role).toBe("iahv_admin");
   });
 
