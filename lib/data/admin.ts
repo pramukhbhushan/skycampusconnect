@@ -125,13 +125,15 @@ function matches(row: AdminDashboardRow, f: AdminFilters): boolean {
 }
 
 /** Every course on the dashboard, with status worked out for today. */
-export async function getAllAdminRows(today = todayIso()): Promise<AdminDashboardRow[]> {
-  return (await loadAdminCourses()).map((c) => toDashboardRow(c, today));
+export async function getAllAdminRows(today?: string): Promise<AdminDashboardRow[]> {
+  await connection(); // statuses depend on today's date, so never prerender them
+  const day = today ?? todayIso();
+  return (await loadAdminCourses()).map((c) => toDashboardRow(c, day));
 }
 
 // Filtering happens here, not in SQL: the queue and "late" depend on today's date and the
 // in-memory admin changes. Fine at SKY's scale (tens of courses per term).
-export async function getAdminDashboard(filters: AdminFilters = NO_FILTERS, today = todayIso()): Promise<AdminDashboard> {
+export async function getAdminDashboard(filters: AdminFilters = NO_FILTERS, today?: string): Promise<AdminDashboard> {
   const all = await getAllAdminRows(today);
   const filtered = all.filter((r) => matches(r, filters));
 
