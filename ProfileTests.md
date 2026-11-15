@@ -19,7 +19,7 @@ All four use the password in `E2E_PASSWORD`. The emails use `example.test`, whic
 
 ## How accounts are made
 
-Google sign-in can't be automated, so the login page also has an email + password form. It only appears when `GUEST_LOGIN=true`; production stays Google-only.
+Google sign-in can't be automated, so the login page also has an email + password form. The tests use that form.
 
 1. `auth.setup.ts` deletes last run's four test people and their courses, so every run starts clean. It also makes sure the three test campuses are in the campus list with the right country (University of Toronto = CA), the way an IAHV admin keeps that list.
 2. For each person it opens `/login`, clicks **New here? Create an account**, and fills in name, email and password. The app's database trigger gives every new account an organizer profile.
@@ -50,7 +50,7 @@ The service-role key is used only for steps 1 and 3 and for the admin fixtures b
 
 ## Running
 
-1. **Stop your own `npm run dev`.** Playwright starts its own dev server pointed at the e2e project with `GUEST_LOGIN=true`, and Next won't run two dev servers in one folder.
+1. **Stop your own `npm run dev`.** Playwright starts its own dev server pointed at the e2e project, and Next won't run two dev servers in one folder.
 2. Run everything: `npm run e2e`.
 3. Run only the profile tests: `npx playwright test e2e/profiles.spec.ts` (setup runs first automatically).
 4. Watch it in a browser: add `--headed`. Step through it: add `--ui`.

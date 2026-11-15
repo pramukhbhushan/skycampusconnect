@@ -37,7 +37,7 @@ export function LoginForm() {
     <div className="flex w-full max-w-[440px] flex-col gap-[26px]">
       <div className="flex flex-col gap-2">
         <h2 className="text-3xl font-bold">Log in</h2>
-        <p className="text-base text-muted">Sign in with your Google account to continue.</p>
+        <p className="text-base text-muted">Sign in with Google or your email to continue.</p>
       </div>
 
       {showError && (
@@ -56,7 +56,7 @@ export function LoginForm() {
       </button>
 
       <p className="text-sm leading-normal text-muted">
-        New organizer? Sign in with Google and we&apos;ll set up your profile. Admin access is granted by the IAHV team.
+        New organizer? Sign in with Google or create an account with email, and we&apos;ll set up your profile. Admin access is granted by the IAHV team.
       </p>
     </div>
   );

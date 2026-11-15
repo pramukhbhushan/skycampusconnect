@@ -1,7 +1,6 @@
 "use client";
-// Email + password sign-in for local testing and end-to-end tests (Playwright can't use
-// Google). Shown only when GUEST_LOGIN=true; production stays Google-only. It uses the
-// same Supabase Auth as Google sign-in: a new account gets an organizer profile from the
+// Email + password sign-in, offered alongside Google (and used by the Playwright tests,
+// which can't drive Google). It uses the same Supabase Auth as Google sign-in: a new account gets an organizer profile from the
 // on_auth_user_created trigger, and roles are checked by requireRole as usual.
 
 import { useRouter, useSearchParams } from "next/navigation";
@@ -51,7 +50,7 @@ export function PasswordForm() {
     <form onSubmit={submit} aria-label={signUp ? "Create an account with email" : "Sign in with email"} className="flex flex-col gap-3">
       <div className="flex items-center gap-3 text-sm text-muted">
         <span className="h-px flex-1 bg-line" />
-        or use email (test accounts)
+        or use email
         <span className="h-px flex-1 bg-line" />
       </div>
 

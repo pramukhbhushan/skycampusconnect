@@ -3,7 +3,7 @@
 // sign-in to e2e/.auth/<id>.json so the tests start signed in.
 //
 // Needs the e2e Supabase project with Email sign-in on and "Confirm email" off, and the
-// test server started with GUEST_LOGIN=true (playwright.config.ts does both). See ProfileTests.md.
+// test server pointed at it (playwright.config.ts does that). See ProfileTests.md.
 import { expect, test as setup } from "@playwright/test";
 import { KELSI, ORGANIZERS, PERSONAS, authFile, password, type Persona } from "./support/personas";
 import { ensureCampuses, makeAdmin, wipeTestPeople } from "./support/supabase-admin";
