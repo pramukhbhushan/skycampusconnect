@@ -3,7 +3,8 @@ import Link from "next/link";
 import { ArrowRight, ChatBubble, Plus } from "@/components/icons";
 import { ProgressSegments, StatusPill } from "@/components/ui";
 import { formatRange } from "@/lib/dates";
-import { getCurrentOrganizer, getOrganizerCourses } from "@/lib/data/organizer";
+import { getMe, listMyCourses } from "@/lib/data/organizer-db";
+import { courseCard } from "@/lib/organizer/card";
 import { COURSE_TYPE_LABEL } from "@/lib/pricing";
 import { STEP_NAMES, currentStep, describeSteps, doneCount } from "@/lib/steps";
 
@@ -26,10 +27,15 @@ const GUIDES = [
   { title: "Orientation call guide", desc: "Confirm students can commit to all 3 days" },
 ];
 
-export default function OrganizerHome() {
-  const me = getCurrentOrganizer();
-  const myCourses = getOrganizerCourses(me.id);
-  const firstName = me.name.split(" ")[0];
+export default async function OrganizerHome() {
+  const me = await getMe();
+  const courses = await listMyCourses();
+  const myCourses = courses.map((course) => ({ course, card: courseCard(course) }));
+  const firstName = me.name.split(" ")[0] || "there";
+  const active = myCourses.filter(({ course }) => course.type !== null);
+  const summary = active.slice(0, 2);
+  const funding = active.find(({ course }) => course.steps[2] !== "skipped");
+  const invoice = active[0];
 
   return (
     <main className="mx-auto flex max-w-[1240px] flex-col gap-10 px-8 pt-10 pb-16">
@@ -48,11 +54,16 @@ export default function OrganizerHome() {
             <span aria-hidden="true" className="flex size-[34px] flex-none items-center justify-center rounded-full bg-brand-bright text-white">
               <ChatBubble size={16} />
             </span>
-            {/* TODO(backend): generate this summary from the organizer's open steps. */}
             <div className="rounded-[4px_16px_16px_16px] bg-tint px-[18px] py-3.5 text-base leading-[1.55]">
-              Your <strong>UMD Spring Retreat</strong> is waiting on IAHV Finance to approve funding (sent 2 days ago, usually
-              1–2 business days). Your <strong>Fall Premium Retreat</strong> ended last week: it still needs the invoice
-              number entered in Journey so it can be closed.
+              {summary.length === 0 ? (
+                <>You don&apos;t have any retreats in progress yet. Start one and I&apos;ll guide you through each step.</>
+              ) : (
+                summary.map(({ course, card }) => (
+                  <span key={course.id} className="block">
+                    <strong>{course.name}</strong>: {card.next}
+                  </span>
+                ))
+              )}
             </div>
           </div>
           <div className="flex flex-wrap gap-2.5 pl-[46px]">
@@ -60,8 +71,12 @@ export default function OrganizerHome() {
               <Plus size={16} />
               Plan a new retreat
             </Link>
-            <Link href="/organizer/courses/umd-spring-2027/funding" className={chatChip}>Check my funding request</Link>
-            <Link href="/organizer/courses/umd-spring-2027/invoice" className={chatChip}>Start my invoice request</Link>
+            {funding && (
+              <Link href={`/organizer/courses/${funding.course.id}/funding`} className={chatChip}>Check my funding request</Link>
+            )}
+            {invoice && (
+              <Link href={`/organizer/courses/${invoice.course.id}/invoice`} className={chatChip}>Start my invoice request</Link>
+            )}
             <a href="#help" className={chatChip}>How do I close a course?</a>
           </div>
         </div>
@@ -98,6 +113,12 @@ export default function OrganizerHome() {
             Start a new course
           </Link>
         </div>
+
+        {myCourses.length === 0 && (
+          <p className="rounded-[20px] border border-line bg-white p-6 text-base text-muted">
+            No courses yet. Use &ldquo;Start a new course&rdquo; to plan your first retreat.
+          </p>
+        )}
 
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(340px,100%),1fr))] gap-[18px]">
           {myCourses.map(({ course, card }) => {

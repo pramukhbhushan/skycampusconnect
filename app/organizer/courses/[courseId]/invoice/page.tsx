@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import { CourseHeader } from "@/components/course-stepper";
 import type { StepStatus } from "@/lib/types";
-import { courseStaticParams, courseSubtitle, loadCourse } from "../course-data";
+import { courseSubtitle, loadCourse } from "../course-data";
 import { InvoiceForm } from "./invoice-form";
 
 export const metadata: Metadata = { title: "Invoice request" };
-
-export const generateStaticParams = courseStaticParams;
 
 // Step 4 · Quote & invoice request.
 export default async function InvoicePage({ params }: PageProps<"/organizer/courses/[courseId]/invoice">) {

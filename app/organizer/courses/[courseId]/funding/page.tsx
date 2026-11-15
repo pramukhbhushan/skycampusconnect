@@ -4,22 +4,19 @@ import { CourseHeader, StepLayout } from "@/components/course-stepper";
 import { Clock, Upload, Warning } from "@/components/icons";
 import { Callout, Card, Eyebrow, FileRow, SideCard, TextArea, TextField } from "@/components/ui";
 import { formatNumeric } from "@/lib/dates";
-import { getOpenPriorCourses } from "@/lib/data/courses";
-import { getOrganizer } from "@/lib/data/organizer";
+import { getMe, listMyOpenPriorCourses } from "@/lib/data/organizer-db";
 import { STEP_NAMES, currentStep } from "@/lib/steps";
-import { courseStaticParams, courseSubtitle, loadCourse } from "../course-data";
+import { courseSubtitle, loadCourse } from "../course-data";
 import { AgreementChoice, FundingFooter, StudentFeeChoice } from "./funding-choices";
 
 export const metadata: Metadata = { title: "Funding approval" };
 
-export const generateStaticParams = courseStaticParams;
-
 // Step 3 · Funding approval (only for school / sponsor / donor funded courses).
 export default async function FundingPage({ params }: PageProps<"/organizer/courses/[courseId]/funding">) {
   const course = await loadCourse(params);
-  const organizer = getOrganizer(course.organizerId)!;
+  const organizer = await getMe();
   const funding = course.funding;
-  const openPrior = getOpenPriorCourses(course);
+  const openPrior = await listMyOpenPriorCourses(course);
   const steps = course.steps.map((s, i) => (i === 2 && s === "todo" ? "in_progress" : s));
 
   return (
@@ -32,7 +29,7 @@ export default async function FundingPage({ params }: PageProps<"/organizer/cour
             <SideCard title="How approval works">
               <ol className="flex list-decimal flex-col gap-2.5 pl-5 text-sm leading-normal text-ink-soft">
                 <li>You submit this request with your proof of funds.</li>
-                <li>IAHV Finance reviews it, usually in 1–2 business days.</li>
+                <li>IAHV reviews it, usually in 1–2 business days.</li>
                 <li>Once approved, your Journey student fee is updated and Step 4 opens.</li>
               </ol>
             </SideCard>
@@ -47,7 +44,7 @@ export default async function FundingPage({ params }: PageProps<"/organizer/cour
       >
         <form className="contents">
           {funding?.status === "submitted" && (
-            <Callout role="status" tone="warn" icon={<Clock size={22} />} title={`Submitted ${funding.submittedOn} · waiting on IAHV Finance`}>
+            <Callout role="status" tone="warn" icon={<Clock size={22} />} title={`Submitted ${funding.submittedOn} · waiting on IAHV`}>
               <span>Usually 1–2 business days. We&apos;ll email you when it&apos;s approved, and Step 4 unlocks automatically.</span>
             </Callout>
           )}
