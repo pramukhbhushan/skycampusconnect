@@ -45,3 +45,26 @@ replaced decision is marked `Superseded by <NNN>`.
 **Concerns raised:** None.
 
 **Revisit if:** the funding form (A-5.1) lets organizers choose an agreement status before Sprint 6; then make the change with A-5.1.
+
+## 003. Build PDF uploads first, then the invoice request (A-3.1), then the funding request (A-5.1)
+**Date:** 2026-11-15
+**Status:** Accepted
+
+**Decision:** Next organizer work is, in order: a shared PDF upload piece (Storage upload, `documents` row, reusable component), then A-3.1 `requestInvoice`, then A-5.1 `submitFundingRequest` (pulled forward from Sprint 5), then A-2.3 card text.
+
+**Context:** Steps 3 and 4 were still mockups, so courses never got past them. Both forms require PDFs in B's Zod schemas (at least one proof-of-funds PDF for funding; at least one signed-agreement PDF for the invoice), and no upload code existed. The Storage bucket and its policies already existed (A-0.2). B's admin transition functions (`approve_funding`, `issue_invoice_number`, ...) were already live, so submissions could be acted on immediately. A-2.3's card text depends on funding/invoice states that don't exist until those forms save.
+
+**Options considered:**
+- A-3.1 then A-5.1: highest value first, but uploads would be buried inside A-3.1.
+- A-5.1 then A-3.1: follows the course order, same hidden upload dependency.
+- Uploads first, then A-3.1, then A-5.1 (chosen): the shared piece is built and tested once; each form PR stays small; the invoice can reuse the step 3 PDF as plan-v3 wants.
+- A-2.3 first: its text would be redone once steps 3 and 4 save.
+- Relax the PDF requirement: fastest, but skips a real IAHV rule and needs B to change schemas.
+
+**Why:** Both forms are blocked on the same missing piece; build it once. The invoice goes before funding because the plan ranks it highest and students-pay courses can use it right away.
+
+**Accepted downsides:** One more PR before a "Submit" button works; part of A-5.2 moves out of Sprint 5.
+
+**Concerns raised:** None.
+
+**Revisit if:** most real courses are university-funded (then do A-5.1 before A-3.1).
