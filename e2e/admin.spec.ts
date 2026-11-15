@@ -118,6 +118,11 @@ test.describe("reminder emails (B-4.3)", () => {
     await expect(page.getByText(`<${ALEX.email}>`)).toBeVisible();
     await expect(page.getByText(`Payment for ${fx.overdue.name} is past due`)).toBeVisible();
 
+    // "Open in mail app": a mailto link To the organizer, with the filled-in subject and message.
+    const mail = page.getByRole("link", { name: "Open in mail app" });
+    const href = decodeURIComponent((await mail.getAttribute("href")) ?? "");
+    expect(href).toMatch(new RegExp(`^mailto:${ALEX.email.replace(/\./g, "\\.")}\\?subject=Payment for ${fx.overdue.name} is past due&body=Hi Alex,`));
+
     await page.getByRole("button", { name: "Send to 1 organizer" }).click();
     await expect(page.getByRole("status")).toContainText("Sent to 1 organizer");
     await expect(page.getByRole("region", { name: "Recently sent" }).getByRole("listitem").first()).toContainText("Payment overdue");

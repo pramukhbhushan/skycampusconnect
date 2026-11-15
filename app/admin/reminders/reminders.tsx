@@ -5,7 +5,7 @@ import { Chip, cx } from "@/components/ui";
 import type { ReminderTemplateKey } from "@/lib/admin/derive";
 import type { ReminderRecipient } from "@/lib/data/reminders";
 import { MERGE_FIELDS, renderTemplate, unknownFields, type EmailTemplate, type MergeValues } from "@/lib/email/templates";
-import { sendRemindersAction, type SendState } from "./actions";
+import { recordMailAppReminder, sendRemindersAction, type SendState } from "./actions";
 
 const panel = "flex min-w-0 flex-col rounded-[20px] border border-line bg-white p-6";
 const fieldCls = "rounded-xl border border-field bg-white px-3.5 text-[15px] text-ink";
@@ -23,6 +23,12 @@ function Address({ label, person }: { label: string; person: Person }) {
       </span>
     </div>
   );
+}
+
+/** A mailto: link that opens the admin's own mail app with the email filled in. */
+export function mailtoHref(to: string, subject: string, body: string): string {
+  const enc = (v: string) => encodeURIComponent(v.replace(/\r?\n/g, "\r\n"));
+  return `mailto:${encodeURIComponent(to)}?subject=${enc(subject)}&body=${enc(body)}`;
 }
 
 // B-4.3: plan-v3 "Reminder emails". Every email is sent by an IAHV admin from here;
@@ -91,6 +97,15 @@ export function Reminders({
   })();
   const unknown = unknownFields(`${subject}\n${body}`);
   const n = chosen.length;
+
+  // One ready-to-send email per organizer, for their own mail app.
+  const drafts = chosen.map((r) => {
+    const v = values[r.courseId] ?? {};
+    const s = renderTemplate(subject, v);
+    const b = renderTemplate(body, v);
+    const missing = [...new Set([...s.missing, ...b.missing])];
+    return { r, href: mailtoHref(r.email, s.text, b.text), missing };
+  });
 
   return (
     <>
@@ -214,6 +229,39 @@ export function Reminders({
             </div>
           )}
 
+          {drafts.length > 0 && unknown.length === 0 && (
+            <section aria-labelledby="mailapp-title" className="flex flex-col gap-2.5 rounded-[14px] border border-line bg-surface px-4 py-3.5">
+              <div className="flex flex-col gap-0.5">
+                <h3 id="mailapp-title" className="text-[15px] font-bold">Send from your mail app</h3>
+                <p className="text-[13px] text-muted">
+                  Opens your email app with the message filled in, To the organizer. It goes from your own account, so replies come to you.
+                </p>
+              </div>
+              <ul className="flex flex-col gap-2">
+                {drafts.map(({ r, href, missing }) => (
+                  <li key={r.courseId} className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="min-w-0 text-sm">
+                      <strong>{r.organizer}</strong> <span className="text-muted">· {r.course}</span>
+                    </span>
+                    {missing.length > 0 ? (
+                      <span className="text-[13px] font-semibold text-danger-fg">
+                        Missing {missing.map((m) => MERGE_FIELDS[m].toLowerCase()).join(", ")}
+                      </span>
+                    ) : (
+                      <a
+                        href={href}
+                        onClick={() => void recordMailAppReminder(r.courseId, templateKey, r.course)}
+                        className="inline-flex min-h-10 items-center rounded-xl bg-brand px-4 text-sm font-semibold text-white no-underline hover:text-white hover:opacity-90"
+                      >
+                        Open in mail app{n > 1 ? ` · ${r.organizer.split(" ")[0]}` : ""}
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {state && (
             <p role={state.ok ? "status" : "alert"} className={cx("rounded-xl px-3.5 py-2.5 text-sm", state.ok ? "bg-ok-bg text-ok-text" : "bg-danger-bg text-danger-text")}>
               {state.ok ? state.message : state.error}
@@ -236,7 +284,7 @@ export function Reminders({
               name="mode"
               value="send"
               disabled={pending || n === 0 || unknown.length > 0}
-              className="min-h-[50px] cursor-pointer rounded-xl bg-brand px-6 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-[50px] cursor-pointer rounded-xl border border-brand bg-white px-6 font-semibold text-brand disabled:cursor-not-allowed disabled:opacity-50"
             >
               {pending ? "Sending…" : `Send to ${n} organizer${n === 1 ? "" : "s"}`}
             </button>
