@@ -8,6 +8,7 @@
 // Create one client per request; do not store it in a module-level variable.
 
 import { createServerClient } from "@supabase/ssr";
+import { io } from "next/cache";
 import { cookies } from "next/headers";
 import { getSupabaseEnv } from "./env";
 
@@ -15,6 +16,11 @@ export async function createClient() {
   // cookies() first: during `next build` it marks the page as request-time and stops
   // prerendering here, so a build without Supabase settings (CI) doesn't throw below.
   const cookieStore = await cookies();
+  // With partialPrefetching, cookies() resolves during prerendering (session data is
+  // included in the prefetched shell), so it isn't a suspension point by itself. Supabase
+  // then reads Date.now() (token expiry), which Next forbids while prerendering. io()
+  // marks everything after it as request-time; outside prerendering it resolves at once.
+  await io();
   const { url, anonKey } = getSupabaseEnv();
 
   return createServerClient(url, anonKey, {
