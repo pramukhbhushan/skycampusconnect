@@ -9,6 +9,7 @@ const BAR: Record<StepStatus, string> = {
   in_progress: "bg-brand-light",
   waiting: "bg-amber",
   todo: "bg-line-2",
+  locked: "bg-line-2",
   skipped: "bg-white border border-dashed border-skip",
 };
 

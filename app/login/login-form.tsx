@@ -8,14 +8,14 @@ import type { Role } from "@/lib/types";
 
 const ROLES: { id: Role; label: string; desc: string }[] = [
   { id: "organizer", label: "Organizer", desc: "Plan and run courses on my campus" },
-  { id: "admin", label: "IAHV Admin", desc: "Finance & SKY Campus team: all courses" },
+  { id: "iahv_admin", label: "IAHV Admin", desc: "Finance & SKY Campus team: all courses" },
 ];
 
 // TODO(backend): replace the link with a Supabase magic-link sign-in that
 // restricts organizers to campus domains and admins to invited IAHV emails.
 export function LoginForm() {
   const [role, setRole] = useState<Role>("organizer");
-  const isAdmin = role === "admin";
+  const isAdmin = role === "iahv_admin";
 
   return (
     <form className="flex w-full max-w-[440px] flex-col gap-[26px]">
