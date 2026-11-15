@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Email reminders" };
 
 // TODO(backend): the sender is the signed-in IAHV admin (plan-v3 "Reminder emails").
 // This sample address stands in until Google sign-in lands (A-0.5).
-const SAMPLE_SENDER = { name: adminUser.name, email: "admin@iahv.org" };
+const SAMPLE_SENDER = { name: adminUser.name, email: adminUser.email };
 
 export default function RemindersPage() {
   // Each reminder goes TO the course organizer's email, so attach it to every recipient.
