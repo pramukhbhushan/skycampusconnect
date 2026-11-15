@@ -12,8 +12,10 @@ import { cookies } from "next/headers";
 import { getSupabaseEnv } from "./env";
 
 export async function createClient() {
-  const { url, anonKey } = getSupabaseEnv();
+  // cookies() first: during `next build` it marks the page as request-time and stops
+  // prerendering here, so a build without Supabase settings (CI) doesn't throw below.
   const cookieStore = await cookies();
+  const { url, anonKey } = getSupabaseEnv();
 
   return createServerClient(url, anonKey, {
     cookies: {
