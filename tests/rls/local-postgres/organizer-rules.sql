@@ -111,6 +111,40 @@ select pg_temp.expect_fail('other organizer links a file to Maya''s funding requ
 select pg_temp.expect_fail('other organizer logs an invoice on Maya''s course',
   $$insert into public.invoices (course_id, amount) values ('aaaaaaaa-0000-0000-0000-000000000001', 100)$$);
 
+-- ---- Creating a course (A-2.1) ------------------------------------------------------
+select pg_temp.act_as(:maya);
+select public.create_course('Students pay', 'happiness', 'in_person', '2027-04-02', '2027-04-04', null, null, 12, '{students}', '{"requirements": [true, false, false]}');
+select pg_temp.expect_rows('create_course makes 8 steps',
+  $$select 1 from public.course_steps s join public.courses c on c.id = s.course_id where c.name = 'Students pay'$$, 8);
+select pg_temp.expect_rows('step 3 skipped when only students pay',
+  $$select 1 from public.course_steps s join public.courses c on c.id = s.course_id where c.name = 'Students pay' and s.step_no = 3 and s.status = 'skipped'$$, 1);
+select pg_temp.expect_rows('step 1 starts in progress with its checklist',
+  $$select 1 from public.course_steps s join public.courses c on c.id = s.course_id where c.name = 'Students pay' and s.step_no = 1 and s.status = 'in_progress' and s.data ? 'requirements'$$, 1);
+select pg_temp.expect_rows('course belongs to the caller',
+  $$select 1 from public.courses where name = 'Students pay' and organizer_id = '11111111-1111-1111-1111-111111111111'$$, 1);
+update public.courses set funding_sources = '{students,university}' where name = 'Students pay';
+select pg_temp.expect_rows('adding a university payer reopens step 3',
+  $$select 1 from public.course_steps s join public.courses c on c.id = s.course_id where c.name = 'Students pay' and s.step_no = 3 and s.status = 'todo'$$, 1);
+update public.course_steps set status = 'waiting'
+  where step_no = 3 and course_id = (select id from public.courses where name = 'Students pay');
+update public.courses set funding_sources = '{students}' where name = 'Students pay';
+select pg_temp.expect_rows('a started funding step is left alone',
+  $$select 1 from public.course_steps s join public.courses c on c.id = s.course_id where c.name = 'Students pay' and s.step_no = 3 and s.status = 'waiting'$$, 1);
+select public.create_course('Draft', null, null, null, null, null, null, null, null);
+select pg_temp.expect_rows('a draft keeps step 3 open',
+  $$select 1 from public.course_steps s join public.courses c on c.id = s.course_id where c.name = 'Draft' and s.step_no = 3 and s.status = 'todo'$$, 1);
+insert into public.campuses (name) values ('Example State University');
+select pg_temp.expect_rows('organizer adds a missing campus', $$select 1 from public.campuses where name = 'Example State University'$$, 1);
+select pg_temp.expect_affected('organizer cannot rename a campus',
+  $$update public.campuses set name = 'Renamed' where name = 'Example State University'$$, 0);
+
+reset role;
+set role anon;
+select pg_temp.expect_fail('anonymous visitor creates a course',
+  $$select public.create_course('x', null, null, null, null, null, null, null, null)$$);
+reset role;
+set role authenticated;
+
 -- ---- Signed out -------------------------------------------------------------------
 reset role;
 set role anon;

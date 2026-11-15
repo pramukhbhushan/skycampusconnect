@@ -50,3 +50,17 @@ export async function getMyCourse(courseId: string): Promise<Course | null> {
 export async function listMyOpenPriorCourses(course: Course): Promise<Course[]> {
   return openPriorCourses(course, await listMyCourses());
 }
+
+/** The campus-requirements checklist saved on step 1 of my course. */
+export async function getMyStep1Requirements(courseId: string): Promise<boolean[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("course_steps")
+    .select("data")
+    .eq("course_id", courseId)
+    .eq("step_no", 1)
+    .maybeSingle();
+  if (error) throw new Error(`Could not load step 1: ${error.message}`);
+  const saved = (data?.data as { requirements?: unknown } | null)?.requirements;
+  return Array.isArray(saved) ? saved.map((v) => v === true) : [];
+}

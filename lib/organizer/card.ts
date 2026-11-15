@@ -13,7 +13,7 @@ export function courseCard(course: Course): OrganizerCourseCard {
       statusLabel: "Draft",
       tone: "info",
       next: "Add your campus, dates and course type to unlock the rest of your steps.",
-      cta: { label: "Continue setup", href: "/organizer/courses/new" },
+      cta: { label: "Continue setup", href: `${base}/details` },
     };
   }
 
@@ -31,7 +31,7 @@ export function courseCard(course: Course): OrganizerCourseCard {
   const status = course.steps[step - 1];
   const name = STEP_NAMES[step - 1];
   // Until A-2.2 adds pages for every step, steps without their own page link to the nearest one.
-  const href = step === 3 ? `${base}/funding` : step >= 4 ? `${base}/invoice` : "/organizer/courses/new";
+  const href = step === 3 ? `${base}/funding` : step >= 4 ? `${base}/invoice` : `${base}/details`;
 
   if (status === "waiting") {
     const onOrganizer = step === 7;

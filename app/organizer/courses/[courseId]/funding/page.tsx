@@ -80,7 +80,7 @@ export default async function FundingPage({ params }: PageProps<"/organizer/cour
             <div className="overflow-hidden rounded-[14px] border border-line">
               <div className="flex items-center justify-between gap-2.5 bg-surface px-4 py-3">
                 <span className="text-sm font-bold">Filled in from your course</span>
-                <Link href="/organizer/courses/new" className="text-sm font-semibold">Edit</Link>
+                <Link href={`/organizer/courses/${course.id}/details`} className="text-sm font-semibold">Edit</Link>
               </div>
               <dl className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-x-5 gap-y-3.5 p-4 text-sm">
                 {[

@@ -1,21 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import { CourseHeader, StepLayout } from "@/components/course-stepper";
 import { ArrowRight, InfoCircle } from "@/components/icons";
-import { ButtonLink, Card, Chip, Eyebrow, OptionCard, Segmented, SideCard, TextField } from "@/components/ui";
+import { Button, ButtonLink, Card, Chip, Eyebrow, OptionCard, Segmented, SideCard, TextField } from "@/components/ui";
+import { REQUIREMENTS, needsFundingApproval } from "@/lib/organizer/course-form";
 import { BASE_PRICE, INCLUDED_STUDENTS, computeFee, money } from "@/lib/pricing";
 import type { CourseFormat, CourseType, Funder, StepStatus } from "@/lib/types";
+import { saveCourseForm, type CourseFormState } from "../actions";
 
 export type CourseDetailsInput = {
   name: string;
-  type: CourseType;
+  type: CourseType | null;
   format: CourseFormat;
-  startDate: string;
+  startDate: string; // yyyy-mm-dd or ""
   endDate: string;
   university: string;
   teachers: string;
-  estParticipants: number;
+  estParticipants: number | null;
   funders: Funder[];
 };
 
@@ -31,21 +33,30 @@ const FUNDERS: { id: Funder; label: string }[] = [
   { id: "donor", label: "Individual donor" },
 ];
 
-const REQUIREMENTS = [
-  { title: "Event request submitted to my university", hint: "Some campuses need this 2+ weeks ahead (e.g. Purdue).", done: true },
-  { title: "Room booked for all three days", hint: "Friday and Saturday sessions are required to complete the course.", done: false },
-  { title: "Campus funding application submitted", hint: "Only if your school, a sponsor or donor is paying.", done: false },
-];
 
-// TODO(backend): persist with a server action (insert into `courses`, seed `course_steps`).
-export function CourseDetailsForm({ initial }: { initial: CourseDetailsInput }) {
-  const [type, setType] = useState(initial.type);
+function FieldError({ message }: { message?: string }) {
+  return message ? <p role="alert" className="-mt-1 text-sm font-semibold text-danger-text">{message}</p> : null;
+}
+
+/** Step 1 form. Saves through saveCourseForm (creates the course, or updates `courseId`). */
+export function CourseDetailsForm({
+  courseId,
+  initial,
+  requirements,
+}: {
+  courseId?: string;
+  initial: CourseDetailsInput;
+  requirements: boolean[];
+}) {
+  const [state, formAction, pending] = useActionState<CourseFormState, FormData>(saveCourseForm, {});
+  const errors = state.errors ?? {};
+  const [type, setType] = useState<CourseType | null>(initial.type);
   const [format, setFormat] = useState(initial.format);
   const [funders, setFunders] = useState<Set<Funder>>(new Set(initial.funders));
-  const [participants, setParticipants] = useState(initial.estParticipants);
+  const [participants, setParticipants] = useState(initial.estParticipants ?? 0);
 
-  const needsFunding = funders.has("university") || funders.has("sponsor") || funders.has("donor");
-  const fee = computeFee(type, participants);
+  const needsFunding = needsFundingApproval([...funders]);
+  const fee = computeFee(type ?? "happiness", participants);
   const steps: StepStatus[] = ["in_progress", "todo", needsFunding ? "todo" : "skipped", "todo", "todo", "todo", "todo", "todo"];
 
   const toggleFunder = (f: Funder) =>
@@ -58,7 +69,11 @@ export function CourseDetailsForm({ initial }: { initial: CourseDetailsInput }) 
 
   return (
     <>
-      <CourseHeader title="New retreat" steps={steps} aside={<span className="text-sm text-muted">Draft · saved just now</span>} />
+      <CourseHeader
+        title={courseId ? initial.name || "Untitled retreat" : "New retreat"}
+        steps={steps}
+        aside={<span className="text-sm text-muted">{courseId ? "Draft saved" : "Not saved yet"}</span>}
+      />
 
       <StepLayout
         aside={
@@ -66,7 +81,7 @@ export function CourseDetailsForm({ initial }: { initial: CourseDetailsInput }) 
             <SideCard title="Estimated course fee">
               <p className="text-[34px] font-bold text-brand-dark">{money(fee.subtotal, false)}</p>
               <p className="text-sm leading-normal text-muted">
-                {money(BASE_PRICE[type], false)} base for {INCLUDED_STUDENTS} students + {fee.extraStudents} extra × $100.
+                {money(BASE_PRICE[type ?? "happiness"], false)} base for {INCLUDED_STUDENTS} students + {fee.extraStudents} extra × $100.
                 Updates when your sign-ups change.
               </p>
             </SideCard>
@@ -85,7 +100,20 @@ export function CourseDetailsForm({ initial }: { initial: CourseDetailsInput }) 
           </>
         }
       >
-        <form className="contents">
+        <form action={formAction} className="contents" noValidate>
+          {courseId && <input type="hidden" name="courseId" value={courseId} />}
+          {type && <input type="hidden" name="type" value={type} />}
+          <input type="hidden" name="format" value={format} />
+          {[...funders].map((f) => (
+            <input key={f} type="hidden" name="funders" value={f} />
+          ))}
+
+          {errors.form && (
+            <p role="alert" className="rounded-xl border border-danger-text bg-white p-4 text-sm font-semibold text-danger-text">
+              {errors.form}
+            </p>
+          )}
+
           <Card className="gap-[22px]">
             <div className="flex flex-col gap-1">
               <Eyebrow>Step 1 of 8</Eyebrow>
@@ -95,7 +123,8 @@ export function CourseDetailsForm({ initial }: { initial: CourseDetailsInput }) 
               </p>
             </div>
 
-            <TextField id="c-name" label="Course name" defaultValue={initial.name} />
+            <TextField id="c-name" name="name" label="Course name" defaultValue={initial.name} required aria-invalid={!!errors.name} />
+            <FieldError message={errors.name} />
 
             <fieldset className="flex flex-col gap-2.5">
               <legend className="mb-2.5 text-sm font-semibold">Course type</legend>
@@ -107,6 +136,7 @@ export function CourseDetailsForm({ initial }: { initial: CourseDetailsInput }) 
                   </OptionCard>
                 ))}
               </div>
+              <FieldError message={errors.type} />
             </fieldset>
 
             <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
@@ -121,27 +151,34 @@ export function CourseDetailsForm({ initial }: { initial: CourseDetailsInput }) 
                   onChange={setFormat}
                 />
               </fieldset>
-              <TextField id="c-start" label="Start date" defaultValue={initial.startDate} />
-              <TextField id="c-end" label="End date" defaultValue={initial.endDate} />
+              <TextField id="c-start" name="startDate" type="date" label="Start date" defaultValue={initial.startDate} aria-invalid={!!errors.startDate} />
+              <TextField id="c-end" name="endDate" type="date" label="End date" defaultValue={initial.endDate} aria-invalid={!!errors.endDate} />
             </div>
+            <FieldError message={errors.startDate ?? errors.endDate} />
 
             <TextField
               id="c-uni"
+              name="university"
+              aria-invalid={!!errors.university}
               label="University or college (full name)"
               defaultValue={initial.university}
               hint="Spell it out, e.g. “George Washington University”, not “GW”."
             />
+            <FieldError message={errors.university} />
 
             <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4">
-              <TextField id="c-teachers" label="Teacher(s)" placeholder="Names of SKY teachers" defaultValue={initial.teachers} />
+              <TextField id="c-teachers" name="teachers" label="Teacher(s)" placeholder="Names of SKY teachers" defaultValue={initial.teachers} />
               <TextField
                 id="c-count"
+                name="estParticipants"
                 label="Estimated participants"
+                aria-invalid={!!errors.estParticipants}
                 inputMode="numeric"
                 value={participants}
                 onChange={(e) => setParticipants(Math.max(0, Number(e.target.value.replace(/\D/g, "")) || 0))}
               />
             </div>
+            <FieldError message={errors.estParticipants ?? errors.teachers} />
 
             <fieldset className="flex flex-col gap-2.5">
               <legend className="mb-2.5 text-sm font-semibold">Who is paying for the course?</legend>
@@ -152,6 +189,7 @@ export function CourseDetailsForm({ initial }: { initial: CourseDetailsInput }) 
                   </Chip>
                 ))}
               </div>
+              <FieldError message={errors.funders} />
               {needsFunding ? (
                 <p className="mt-1.5 flex items-start gap-2.5 rounded-xl bg-tint px-3.5 py-3 text-sm leading-normal text-info-text">
                   <InfoCircle className="mt-px flex-none text-brand" />
@@ -174,9 +212,9 @@ export function CourseDetailsForm({ initial }: { initial: CourseDetailsInput }) 
               <p className="text-[15px] text-muted">Every university has its own rules and deadlines. Tick these off as you go.</p>
             </div>
             <div className="flex flex-col gap-2.5">
-              {REQUIREMENTS.map((r) => (
+              {REQUIREMENTS.map((r, i) => (
                 <label key={r.title} className="flex cursor-pointer items-start gap-3.5 rounded-[14px] border border-line p-4">
-                  <input type="checkbox" defaultChecked={r.done} className="mt-0.5 size-5 accent-brand" />
+                  <input type="checkbox" name={`requirement${i}`} defaultChecked={requirements[i] ?? false} className="mt-0.5 size-5 accent-brand" />
                   <span className="flex flex-col gap-0.5">
                     <span className="text-base font-semibold">{r.title}</span>
                     <span className="text-sm text-muted">{r.hint}</span>
@@ -187,10 +225,12 @@ export function CourseDetailsForm({ initial }: { initial: CourseDetailsInput }) 
           </Card>
 
           <div className="flex flex-wrap justify-between gap-3">
-            <ButtonLink href="/organizer" variant="secondary" className="px-[22px]">Save draft</ButtonLink>
-            <ButtonLink href="/organizer/courses/umd-spring-2027/funding">
-              Save &amp; continue <ArrowRight />
-            </ButtonLink>
+            <Button type="submit" name="intent" value="draft" variant="secondary" className="px-[22px]" disabled={pending}>
+              Save draft
+            </Button>
+            <Button type="submit" name="intent" value="continue" disabled={pending}>
+              {pending ? "Saving…" : "Save & continue"} <ArrowRight />
+            </Button>
           </div>
         </form>
       </StepLayout>
