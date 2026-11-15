@@ -1,4 +1,4 @@
-// Domain types shared by the UI. They mirror the Supabase schema in plan-v2.md
+// Domain types shared by the UI. They mirror the Supabase schema in plan-v3.md
 // so that swapping lib/mock-data.ts for real queries is a drop-in change.
 
 export type Role = "organizer" | "admin";

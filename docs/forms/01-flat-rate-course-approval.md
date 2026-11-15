@@ -4,7 +4,7 @@ Source: `raw-forms/SKY Campus Flat Rate Course Approval3.pdf` (Google Form, owne
 
 **Purpose (from form):** request approval for university/donor/grant/sponsor-funded courses. Used to verify funding, approve pricing + registration settings, track funding sources, ensure accurate accounting. "Complete before posting a funded course or requesting a quote/invoice."
 
-This is the **"$0 request"** in the meeting notes, i.e. plan.md **Step 3**.
+This is the **"$0 request"** in the meeting notes, i.e. plan-v3.md **Step 3**.
 
 ## Questions (extracted)
 
