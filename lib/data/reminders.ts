@@ -7,7 +7,7 @@ import { shortDate, todayIso } from "@/lib/admin/time";
 import { formatDate, formatRange } from "@/lib/dates";
 import type { MergeValues } from "@/lib/email/templates";
 import { money } from "@/lib/pricing";
-import { getAdminCourse, getAllAdminRows, getCourseFacts, type AdminDashboardRow } from "./admin";
+import { factsOf, getAdminCourse, getAllAdminRows, type AdminDashboardRow } from "./admin";
 import { adminStore } from "./admin-store";
 
 export type ReminderRecipient = {
@@ -71,8 +71,8 @@ export async function getRecipientsFor(courseIds: string[], today = todayIso()):
 /** Values for a template's {{fields}} for one course. */
 export async function mergeValuesFor(courseId: string, admin: { name: string }, origin = ""): Promise<MergeValues> {
   const found = await getAdminCourse(courseId);
-  const facts = await getCourseFacts(courseId);
   if (!found) return { admin_name: admin.name };
+  const facts = factsOf(found);
   const { course, organizer } = found;
   const invoice = facts?.invoice;
   return {

@@ -14,7 +14,7 @@ import {
 import { unknownFields, type EmailTemplate } from "@/lib/email/templates";
 import type { PricingConstants } from "@/lib/pricing";
 import type { Role } from "@/lib/types";
-import { getAllAdminRows, getCourseFacts } from "./admin";
+import { getAllCourseFacts, getCourseFacts } from "./admin";
 import { adminStore, logActivity } from "./admin-store";
 import { getUsers } from "./settings";
 
@@ -24,10 +24,8 @@ const fail = (error: string): ActionResult => ({ ok: false, error });
 
 async function usedInvoiceNumbers(exceptCourseId: string): Promise<Set<string>> {
   const numbers = new Set<string>();
-  for (const row of await getAllAdminRows()) {
-    if (row.id === exceptCourseId) continue;
-    const n = (await getCourseFacts(row.id))?.invoice?.number;
-    if (n) numbers.add(n.toUpperCase());
+  for (const f of await getAllCourseFacts()) {
+    if (f.id !== exceptCourseId && f.invoice?.number) numbers.add(f.invoice.number.toUpperCase());
   }
   return numbers;
 }

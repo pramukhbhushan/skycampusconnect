@@ -55,7 +55,7 @@ export async function getAdminCourse(courseId: string): Promise<AdminCourse | un
 }
 
 /** Stored facts with every in-memory admin change applied. */
-function factsOf({ course, country, facts: s }: AdminCourse): CourseFacts & { country: Country } {
+export function factsOf({ course, country, facts: s }: AdminCourse): CourseFacts & { country: Country } {
   const funding = adminStore.funding.get(course.id);
   const quote = adminStore.quotes.get(course.id);
   const invoice = adminStore.invoices.get(course.id);
@@ -73,6 +73,11 @@ function factsOf({ course, country, facts: s }: AdminCourse): CourseFacts & { co
       accountingSubmitted: s.invoice.accountingSubmitted || invoice?.status === "accounting_submitted",
     },
   };
+}
+
+/** Facts for every course, from one load (server actions don't get React's per-request cache). */
+export async function getAllCourseFacts(): Promise<(CourseFacts & { country: Country })[]> {
+  return (await loadAdminCourses()).map(factsOf);
 }
 
 export async function getCourseFacts(courseId: string): Promise<(CourseFacts & { country: Country }) | undefined> {

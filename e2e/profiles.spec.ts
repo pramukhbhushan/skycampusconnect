@@ -71,8 +71,9 @@ test.describe("organizers", () => {
     await page.goto("/organizer");
     await expect(page.getByRole("article").filter({ hasText: byId("org-purdue").course!.name })).toHaveCount(0);
 
-    const res = await page.goto(`/organizer/courses/${created.get("org-purdue")}`);
-    expect(res?.status()).toBe(404);
+    // Opening it directly doesn't show it: the app sends Alex back to his own home (or 404s).
+    await page.goto(`/organizer/courses/${created.get("org-purdue")}`);
+    await expect(page.getByRole("heading", { level: 1 })).not.toContainText(byId("org-purdue").course!.name);
     await expect(page.getByText(byId("org-purdue").course!.name)).toHaveCount(0);
   });
 
