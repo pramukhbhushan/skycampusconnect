@@ -1,16 +1,14 @@
 // Reminder email data (B-4.3). Owner: Engineer B (Bhushan) (sprint-planning.md 1.1).
 // Recipients come from the same status rules as the dashboard, so "who needs a nudge"
-// is always current. Sample data until the backend lands.
+// is always current. Courses come from Supabase (B-1.1).
 
 import type { ReminderTemplateKey } from "@/lib/admin/derive";
 import { shortDate, todayIso } from "@/lib/admin/time";
 import { formatDate, formatRange } from "@/lib/dates";
 import type { MergeValues } from "@/lib/email/templates";
 import { money } from "@/lib/pricing";
-import { getAllAdminRows, getCourseFacts, type AdminDashboardRow } from "./admin";
+import { getAdminCourse, getAllAdminRows, getCourseFacts, type AdminDashboardRow } from "./admin";
 import { adminStore } from "./admin-store";
-import { getCourse } from "./courses";
-import { getOrganizer } from "./organizer";
 
 export type ReminderRecipient = {
   courseId: string;
@@ -52,10 +50,9 @@ const toRecipient = (row: AdminDashboardRow): ReminderRecipient => ({
   suggested: suggestedTemplate(row),
 });
 
-// TODO(backend): the same rows come from Supabase in B-1.1.
-export function getReminderGroups(today = todayIso()): Record<ReminderTemplateKey, ReminderRecipient[]> {
+export async function getReminderGroups(today = todayIso()): Promise<Record<ReminderTemplateKey, ReminderRecipient[]>> {
   const out = Object.fromEntries(REMINDER_GROUPS.map((g) => [g.id, [] as ReminderRecipient[]])) as Record<ReminderTemplateKey, ReminderRecipient[]>;
-  for (const row of getAllAdminRows(today)) {
+  for (const row of await getAllAdminRows(today)) {
     const key = suggestedTemplate(row);
     if (key) out[key].push(toRecipient(row));
   }
@@ -63,8 +60,8 @@ export function getReminderGroups(today = todayIso()): Record<ReminderTemplateKe
 }
 
 /** Specific courses picked on the dashboard (?courses=a,b). Unknown ids are skipped. */
-export function getRecipientsFor(courseIds: string[], today = todayIso()): ReminderRecipient[] {
-  const rows = getAllAdminRows(today);
+export async function getRecipientsFor(courseIds: string[], today = todayIso()): Promise<ReminderRecipient[]> {
+  const rows = await getAllAdminRows(today);
   return courseIds.flatMap((id) => {
     const row = rows.find((r) => r.id === id);
     return row ? [toRecipient(row)] : [];
@@ -72,11 +69,11 @@ export function getRecipientsFor(courseIds: string[], today = todayIso()): Remin
 }
 
 /** Values for a template's {{fields}} for one course. */
-export function mergeValuesFor(courseId: string, admin: { name: string }, origin = ""): MergeValues {
-  const course = getCourse(courseId);
-  const facts = getCourseFacts(courseId);
-  if (!course) return { admin_name: admin.name };
-  const organizer = getOrganizer(course.organizerId);
+export async function mergeValuesFor(courseId: string, admin: { name: string }, origin = ""): Promise<MergeValues> {
+  const found = await getAdminCourse(courseId);
+  const facts = await getCourseFacts(courseId);
+  if (!found) return { admin_name: admin.name };
+  const { course, organizer } = found;
   const invoice = facts?.invoice;
   return {
     organizer_first_name: organizer?.name.split(" ")[0],

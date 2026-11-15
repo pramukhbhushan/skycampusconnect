@@ -1,15 +1,15 @@
 // GET /admin/export?queue=...&campus=... : the dashboard's current view as CSV (B-7.1).
-// TODO(backend): check requireUser("iahv_admin") once A-0.3/A-0.5 land.
+// Only IAHV admins: loadAdminCourses checks the role.
 import type { NextRequest } from "next/server";
 import { toCsv } from "@/lib/admin/csv";
 import { todayIso } from "@/lib/admin/time";
 import { getAdminDashboard } from "@/lib/data/admin";
 import { parseAdminFilters } from "../filters";
 
-export function GET(request: NextRequest) {
+export async function GET(request: NextRequest) {
   const filters = parseAdminFilters(Object.fromEntries(request.nextUrl.searchParams));
   const today = todayIso();
-  const { rows } = getAdminDashboard(filters, today);
+  const { rows } = await getAdminDashboard(filters, today);
 
   const csv = toCsv(
     ["Course", "Campus", "Country", "Organizer", "Organizer email", "Dates", "Step", "Status", "Due / waiting", "Late"],

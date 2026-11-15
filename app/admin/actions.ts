@@ -1,6 +1,7 @@
 "use server";
-// Server actions for IAHV admins. Each one validates its input, then calls lib/data.
-// TODO(backend): check requireUser("iahv_admin") here once A-0.3/A-0.5 provide it.
+// Server actions for IAHV admins. Each one checks the signed-in user is an IAHV admin
+// (server actions can be called directly, not only from our forms), validates its input,
+// then calls lib/data.
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -13,7 +14,7 @@ import {
   updatePricing,
   type ActionResult,
 } from "@/lib/data/admin-actions";
-import { adminUser } from "@/lib/data/admin-user";
+import { getAdminMe } from "@/lib/data/admin-db";
 
 export type FormState = ActionResult | null;
 
@@ -29,46 +30,51 @@ const refresh = () => revalidatePath("/admin", "layout");
 const invalid = (e: z.ZodError): FormState => ({ ok: false, error: e.issues[0]?.message ?? "Check the form." });
 
 export async function fundingAction(_: FormState, form: FormData): Promise<FormState> {
+  const me = await getAdminMe();
   const parsed = z
     .object({ courseId, action: z.enum(["approve", "needs_info"]), note: z.string().trim().max(1000).optional() })
     .safeParse(Object.fromEntries(form));
   if (!parsed.success) return invalid(parsed.error);
-  const result = decideFunding(parsed.data.courseId, parsed.data.action, adminUser.name, parsed.data.note);
+  const result = await decideFunding(parsed.data.courseId, parsed.data.action, me.name, parsed.data.note);
   if (result.ok) refresh();
   return result;
 }
 
 export async function quoteAction(_: FormState, form: FormData): Promise<FormState> {
+  const me = await getAdminMe();
   const parsed = z
     .object({ courseId, action: z.enum(["issue", "accept", "revise", "expire"]), number: docNumber.optional() })
     .safeParse({ ...Object.fromEntries(form), number: form.get("number") || undefined });
   if (!parsed.success) return invalid(parsed.error);
-  const result = changeQuote(parsed.data.courseId, parsed.data.action, adminUser.name, parsed.data.number);
+  const result = await changeQuote(parsed.data.courseId, parsed.data.action, me.name, parsed.data.number);
   if (result.ok) refresh();
   return result;
 }
 
 export async function invoiceAction(_: FormState, form: FormData): Promise<FormState> {
+  const me = await getAdminMe();
   const parsed = z
     .object({ courseId, action: z.enum(["issue", "mark_sent", "mark_paid", "close"]), number: docNumber.optional() })
     .safeParse({ ...Object.fromEntries(form), number: form.get("number") || undefined });
   if (!parsed.success) return invalid(parsed.error);
-  const result = changeInvoice(parsed.data.courseId, parsed.data.action, adminUser.name, parsed.data.number);
+  const result = await changeInvoice(parsed.data.courseId, parsed.data.action, me.name, parsed.data.number);
   if (result.ok) refresh();
   return result;
 }
 
 export async function roleAction(_: FormState, form: FormData): Promise<FormState> {
+  const me = await getAdminMe();
   const parsed = z
     .object({ userId: z.string().min(1), role: z.enum(["organizer", "iahv_admin"]) })
     .safeParse(Object.fromEntries(form));
   if (!parsed.success) return invalid(parsed.error);
-  const result = await setUserRole(parsed.data.userId, parsed.data.role, adminUser.id);
+  const result = await setUserRole(parsed.data.userId, parsed.data.role, me.id);
   if (result.ok) refresh();
   return result;
 }
 
 export async function templateAction(_: FormState, form: FormData): Promise<FormState> {
+  await getAdminMe();
   const parsed = z
     .object({
       key: z.enum(["request_invoice", "submit_accounting", "payment_overdue", "payment_coming_up", "funding_needs_info"]),
@@ -86,6 +92,7 @@ const money = (label: string) =>
   z.coerce.number({ error: `${label}: enter a number.` }).min(0, { error: `${label} can't be negative.` }).max(100_000);
 
 export async function pricingAction(_: FormState, form: FormData): Promise<FormState> {
+  await getAdminMe();
   const parsed = z
     .object({
       happiness: money("SKY Happiness price").positive({ error: "SKY Happiness price must be more than $0." }),

@@ -1,7 +1,8 @@
 // What IAHV admins can change (B-3.1, B-5.1, B-6.1, B-2.2, B-4.4, B-5.3). Owner: Engineer B.
 // Each function checks the same rules as the Postgres functions in
 // supabase/migrations/*_b_admin_transitions.sql, then records the change.
-// TODO(backend): replace the adminStore writes with supabase.rpc(...) calls once A-0.3 lands.
+// Courses are read from Supabase (B-1.1); these writes still go to adminStore (memory) until
+// they call supabase.rpc(...) in B-3.1/B-5.1/B-6.1.
 import {
   fundingTransition,
   invoiceTransition,
@@ -21,17 +22,18 @@ export type ActionResult = { ok: true; message: string } | { ok: false; error: s
 
 const fail = (error: string): ActionResult => ({ ok: false, error });
 
-function usedInvoiceNumbers(): Set<string> {
+async function usedInvoiceNumbers(exceptCourseId: string): Promise<Set<string>> {
   const numbers = new Set<string>();
-  for (const row of getAllAdminRows()) {
-    const n = getCourseFacts(row.id)?.invoice?.number;
+  for (const row of await getAllAdminRows()) {
+    if (row.id === exceptCourseId) continue;
+    const n = (await getCourseFacts(row.id))?.invoice?.number;
     if (n) numbers.add(n.toUpperCase());
   }
   return numbers;
 }
 
-export function decideFunding(courseId: string, action: FundingAction, actor: string, note?: string): ActionResult {
-  const funding = getCourseFacts(courseId)?.funding;
+export async function decideFunding(courseId: string, action: FundingAction, actor: string, note?: string): Promise<ActionResult> {
+  const funding = (await getCourseFacts(courseId))?.funding;
   if (!funding) return fail("This course has no funding request.");
   const t = fundingTransition(action, funding.status);
   if (!t.ok) return fail(t.error);
@@ -41,8 +43,8 @@ export function decideFunding(courseId: string, action: FundingAction, actor: st
   return { ok: true, message: action === "approve" ? "Funding approved. Step 4 is now open for the organizer." : "Sent back to the organizer with your note." };
 }
 
-export function changeQuote(courseId: string, action: QuoteAction, actor: string, quoteNumber?: string): ActionResult {
-  const quote = getCourseFacts(courseId)?.quote;
+export async function changeQuote(courseId: string, action: QuoteAction, actor: string, quoteNumber?: string): Promise<ActionResult> {
+  const quote = (await getCourseFacts(courseId))?.quote;
   if (!quote) return fail("This course has no quote request.");
   const t = quoteTransition(action, quote.status);
   if (!t.ok) return fail(t.error);
@@ -54,8 +56,8 @@ export function changeQuote(courseId: string, action: QuoteAction, actor: string
   return { ok: true, message: `${text}.` };
 }
 
-export function changeInvoice(courseId: string, action: InvoiceAction, actor: string, invoiceNumber?: string): ActionResult {
-  const invoice = getCourseFacts(courseId)?.invoice;
+export async function changeInvoice(courseId: string, action: InvoiceAction, actor: string, invoiceNumber?: string): Promise<ActionResult> {
+  const invoice = (await getCourseFacts(courseId))?.invoice;
   if (!invoice) return fail("This course has no invoice request.");
   const t = invoiceTransition(action, invoice.status);
   if (!t.ok) return fail(t.error);
@@ -64,7 +66,7 @@ export function changeInvoice(courseId: string, action: InvoiceAction, actor: st
   if (action === "issue") {
     number = invoiceNumber?.trim().toUpperCase() ?? "";
     if (!number) return fail("Enter the invoice number.");
-    if (usedInvoiceNumbers().has(number)) return fail(`Invoice ${number} is already used on another course.`);
+    if ((await usedInvoiceNumbers(courseId)).has(number)) return fail(`Invoice ${number} is already used on another course.`);
   }
   adminStore.invoices.set(courseId, { status: t.to, number });
   const text = {
