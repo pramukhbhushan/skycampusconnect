@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CourseHeader, StepLayout } from "@/components/course-stepper";
-import { Clock, Warning } from "@/components/icons";
+import { CheckCircle, Clock, InfoCircle, Warning } from "@/components/icons";
 import { Callout, Card, Eyebrow, SideCard, TextArea, TextField } from "@/components/ui";
-import { formatNumeric } from "@/lib/dates";
+import { formatDate, formatNumeric } from "@/lib/dates";
 import { DocumentUpload } from "@/components/organizer/document-upload";
-import { getMe, listMyCourseDocuments, listMyOpenPriorCourses } from "@/lib/data/organizer-db";
+import { getMe, getMyFundingRequest, listMyCourseDocuments, listMyOpenPriorCourses } from "@/lib/data/organizer-db";
 import { STEP_NAMES, currentStep } from "@/lib/steps";
 import { courseSubtitle, loadCourse } from "../course-data";
-import { AgreementChoice, FundingFooter, StudentFeeChoice } from "./funding-choices";
+import { AgreementChoice, FundingForm, StudentFeeChoice } from "./funding-choices";
 
 export const metadata: Metadata = { title: "Funding approval" };
 
@@ -16,12 +16,15 @@ export const metadata: Metadata = { title: "Funding approval" };
 export default async function FundingPage({ params }: PageProps<"/organizer/courses/[courseId]/funding">) {
   const course = await loadCourse(params);
   const organizer = await getMe();
-  const funding = course.funding;
-  const [openPrior, proofOfFunds] = await Promise.all([
+  const [openPrior, proofOfFunds, request] = await Promise.all([
     listMyOpenPriorCourses(course),
     listMyCourseDocuments(course.id, "proof_of_funds"),
+    getMyFundingRequest(course.id),
   ]);
   const steps = course.steps.map((s, i) => (i === 2 && s === "todo" ? "in_progress" : s));
+  const skipped = course.steps[2] === "skipped";
+  const locked = skipped || request?.status === "submitted" || request?.status === "approved";
+  const day = (iso: string | null) => (iso ? formatDate(iso.slice(0, 10)) : "");
 
   return (
     <>
@@ -46,10 +49,34 @@ export default async function FundingPage({ params }: PageProps<"/organizer/cour
           </>
         }
       >
-        <form className="contents">
-          {funding?.status === "submitted" && (
-            <Callout role="status" tone="warn" icon={<Clock size={22} />} title={`Submitted ${funding.submittedOn} · waiting on IAHV`}>
-              <span>Usually 1–2 business days. We&apos;ll email you when it&apos;s approved, and Step 4 unlocks automatically.</span>
+        <FundingForm courseId={course.id} locked={locked}>
+          {skipped && (
+            <Callout role="status" tone="info" icon={<InfoCircle size={22} />} title="No funding approval needed">
+              <span>Students pay for this course on Journey, so this step is skipped. Go straight to Step 4.</span>
+            </Callout>
+          )}
+          {request?.status === "submitted" && (
+            <Callout role="status" tone="warn" icon={<Clock size={22} />} title={`Submitted ${day(request.submittedAt)} · waiting on IAHV`}>
+              <span>Usually 1–2 business days. You can start your invoice request meanwhile.</span>
+            </Callout>
+          )}
+          {request?.status === "approved" && (
+            <Callout role="status" tone="ok" icon={<CheckCircle size={22} strokeWidth={2.2} />} title={`Approved by IAHV ${day(request.reviewedAt)}`}>
+              <span>Your Journey student fee is updated. Continue with Step 4.</span>
+            </Callout>
+          )}
+          {request?.status === "needs_info" && (
+            <Callout role="status" tone="danger" icon={<Warning size={22} />} title="IAHV needs more information">
+              <span>{request.reviewNote}</span>
+              <span>Update the request below and submit it again.</span>
+            </Callout>
+          )}
+          {!locked && !course.journeyCourseId && (
+            <Callout tone="warn" icon={<Warning size={22} />} title="Add your Journey course ID first">
+              <span>IAHV needs it to set the student fee, so you can save a draft but not submit yet.</span>
+              <Link href={`/organizer/courses/${course.id}#step-2`} className="font-semibold">
+                Add it in Step 2
+              </Link>
             </Callout>
           )}
 
@@ -107,13 +134,21 @@ export default async function FundingPage({ params }: PageProps<"/organizer/cour
           <Card>
             <h2 className="text-xl font-bold">Funding details</h2>
             <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
-              <TextField id="f-amount" label="Total funding available" defaultValue={funding?.totalFunding ?? ""} />
-              <TextField id="f-count" label="Estimated participants" defaultValue={course.estParticipants ?? ""} />
-              <TextField id="f-needed" label="Needed by" defaultValue={funding?.neededBy ?? ""} />
+              <TextField
+                id="f-amount"
+                name="totalFunding"
+                inputMode="decimal"
+                label="Total funding available ($)"
+                defaultValue={request?.totalFunding ?? ""}
+              />
+              <TextField id="f-count" name="estParticipants" inputMode="numeric" label="Estimated participants" defaultValue={course.estParticipants ?? ""} />
+              <TextField id="f-needed" name="neededBy" type="date" label="Needed by" defaultValue={request?.neededBy ?? ""} />
             </div>
-            <StudentFeeChoice initialPaysPart={funding?.studentsPayPart ?? false} />
+            <StudentFeeChoice initialPaysPart={(request?.studentFee ?? 0) > 0} initialFee={request?.studentFee ?? 0} />
             <TextArea
               id="f-prior"
+              name="priorFundingNote"
+              defaultValue={request?.priorFundingNote ?? ""}
               label="Unused funding from an earlier invoice"
               optional="optional"
               placeholder="Invoice #, how much is left, and how much to use for this course"
@@ -134,10 +169,8 @@ export default async function FundingPage({ params }: PageProps<"/organizer/cour
             />
           </Card>
 
-          <AgreementChoice initial={funding?.agreement ?? "yes"} />
-
-          <FundingFooter courseId={course.id} />
-        </form>
+          <AgreementChoice initial={course.funding?.agreement ?? "yes"} />
+        </FundingForm>
       </StepLayout>
     </>
   );
