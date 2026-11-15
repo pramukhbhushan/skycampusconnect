@@ -64,7 +64,7 @@ export function InvoiceForm({
           </div>
           <SideCard title="What happens next">
             <ol className="flex list-decimal flex-col gap-2.5 pl-5 text-sm leading-normal text-ink-soft">
-              <li>IAHV Finance issues your {noun} # in 2–4 business days.</li>
+              <li>IAHV issues your {noun} # in 2–4 business days.</li>
               <li>Check it, then forward it to the university.</li>
               <li>
                 After the course, enter the invoice # in Journey course accounting (Step 7). We&apos;ll give you text to copy.
@@ -76,7 +76,7 @@ export function InvoiceForm({
     >
       <form className="contents">
         {funding?.status === "approved" && (
-          <Callout role="status" tone="ok" icon={<CheckCircle size={22} strokeWidth={2.2} />} title={`Funding approved by IAHV Finance on ${funding.approvedOn}`}>
+          <Callout role="status" tone="ok" icon={<CheckCircle size={22} strokeWidth={2.2} />} title={`Funding approved by IAHV on ${funding.approvedOn}`}>
             <span>
               {agreementSigned
                 ? "Your agreement is signed, so you can request the invoice directly. No quote needed."
@@ -85,7 +85,7 @@ export function InvoiceForm({
           </Callout>
         )}
         {funding?.status === "submitted" && (
-          <Callout role="status" tone="warn" icon={<Clock size={22} />} title="Funding approval is still with IAHV Finance">
+          <Callout role="status" tone="warn" icon={<Clock size={22} />} title="Funding approval is still with IAHV">
             <span>You can fill in your request now. IAHV issues the {noun} # once funding is approved.</span>
           </Callout>
         )}
@@ -209,7 +209,7 @@ export function InvoiceForm({
             </p>
           </fieldset>
 
-          <TextArea id="i-notes" label="Notes for IAHV Finance" optional="optional" />
+          <TextArea id="i-notes" label="Notes for IAHV" optional="optional" />
         </Card>
 
         <div className="flex flex-wrap justify-between gap-3">

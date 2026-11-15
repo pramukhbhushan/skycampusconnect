@@ -70,7 +70,7 @@ export function FundingFooter({ courseId }: { courseId: string }) {
       <ButtonLink href="/organizer/courses/new" variant="secondary" className="px-[22px]">← Back</ButtonLink>
       <div className="flex flex-wrap gap-3">
         <ButtonLink href="/organizer" variant="secondary" className="px-[22px]">Save draft</ButtonLink>
-        <ButtonLink href={`/organizer/courses/${courseId}/invoice`}>Submit to IAHV Finance</ButtonLink>
+        <ButtonLink href={`/organizer/courses/${courseId}/invoice`}>Submit to IAHV</ButtonLink>
       </div>
     </div>
   );
