@@ -20,7 +20,12 @@ export function LoginForm() {
 
     const { error } = await createClient().auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: callback.toString() },
+      options: {
+        redirectTo: callback.toString(),
+        // Always show Google's account picker, so a shared computer or a user with
+        // both a personal and a campus account isn't signed in silently.
+        queryParams: { prompt: "select_account" },
+      },
     });
     if (error) {
       setFailed(true);
