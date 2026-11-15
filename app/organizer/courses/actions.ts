@@ -28,21 +28,29 @@ type Db = Awaited<ReturnType<typeof createClient>>;
 
 export type CourseFormState = { errors?: FieldErrors };
 
+type Campus = { id: string; country: string };
+
 /** Finds a campus by name (ignoring case), adding it if it isn't listed yet. */
-async function campusId(db: Db, name: string | undefined): Promise<string | null> {
+async function findOrAddCampus(db: Db, name: string | undefined): Promise<Campus | null> {
   if (!name) return null;
   const find = async () => {
     const pattern = name.replace(/[\\%_]/g, (c) => `\\${c}`);
-    const { data, error } = await db.from("campuses").select("id").ilike("name", pattern).limit(1).maybeSingle();
+    const { data, error } = await db.from("campuses").select("id, country").ilike("name", pattern).limit(1).maybeSingle();
     if (error) throw new Error(`Could not look up the campus: ${error.message}`);
-    return data?.id ?? null;
+    return data ?? null;
   };
   const existing = await find();
   if (existing) return existing;
-  const { data, error } = await db.from("campuses").insert({ name }).select("id").single();
-  if (!error) return data.id;
+  // A new campus starts as US (column default); IAHV admins correct the country in the campus list.
+  const { data, error } = await db.from("campuses").insert({ name }).select("id, country").single();
+  if (!error) return data;
   if (error.code === "23505") return find(); // added by someone else a moment ago
   throw new Error(`Could not add the campus: ${error.message}`);
+}
+
+/** A course's country and currency follow its campus (Toronto -> CA, CAD). */
+function locale(campus: Campus | null): { country: "US" | "CA"; currency: "USD" | "CAD" } {
+  return campus?.country === "CA" ? { country: "CA", currency: "CAD" } : { country: "US", currency: "USD" };
 }
 
 async function saveStep1(db: Db, courseId: string, draft: CourseDraft, complete: boolean, requirements: boolean[], userId: string) {
@@ -71,6 +79,7 @@ export async function createCourse(input: unknown, intent: "draft" | "continue" 
   const me = await requireRole("organizer");
   const { data: c, complete, requirements } = parseOrThrow(input, intent);
   const db = await createClient();
+  const campus = await findOrAddCampus(db, c.university);
 
   const { data: id, error } = await db.rpc("create_course", {
     p_name: c.name,
@@ -78,13 +87,16 @@ export async function createCourse(input: unknown, intent: "draft" | "continue" 
     p_format: c.format,
     p_start_date: c.startDate,
     p_end_date: c.endDate,
-    p_campus_id: (await campusId(db, c.university)) ?? undefined,
+    p_campus_id: campus?.id,
     p_teachers: c.teachers,
     p_est_participants: c.estParticipants,
     p_funding_sources: c.funders,
     p_step1_data: { requirements },
   });
   if (error) throw new Error(`Could not create the course: ${error.message}`);
+  // create_course has no country/currency parameters; set them from the campus.
+  const placed = await db.from("courses").update(locale(campus)).eq("id", id);
+  if (placed.error) throw new Error(`Could not set the course country: ${placed.error.message}`);
 
   await saveStep1(db, id, c, complete, requirements, me.id);
   await logEvent(id, "course.created", { name: c.name, complete });
@@ -96,6 +108,7 @@ export async function updateCourse(courseId: string, input: unknown, intent: "dr
   const me = await requireRole("organizer");
   const { data: c, complete, requirements } = parseOrThrow(input, intent);
   const db = await createClient();
+  const campus = await findOrAddCampus(db, c.university);
 
   const { data, error } = await db
     .from("courses")
@@ -105,7 +118,8 @@ export async function updateCourse(courseId: string, input: unknown, intent: "dr
       format: c.format ?? "in_person",
       start_date: c.startDate ?? null,
       end_date: c.endDate ?? null,
-      campus_id: await campusId(db, c.university),
+      campus_id: campus?.id ?? null,
+      ...locale(campus),
       teachers: c.teachers ?? null,
       est_participants: c.estParticipants ?? null,
       funding_sources: c.funders ?? [],

@@ -3,11 +3,11 @@
 // is always current. Courses come from Supabase (B-1.1).
 
 import type { ReminderTemplateKey } from "@/lib/admin/derive";
-import { shortDate, todayIso } from "@/lib/admin/time";
+import { shortDate } from "@/lib/admin/time";
 import { formatDate, formatRange } from "@/lib/dates";
 import type { MergeValues } from "@/lib/email/templates";
 import { money } from "@/lib/pricing";
-import { getAdminCourse, getAllAdminRows, getCourseFacts, type AdminDashboardRow } from "./admin";
+import { factsOf, getAdminCourse, getAllAdminRows, type AdminDashboardRow } from "./admin";
 import { adminStore } from "./admin-store";
 
 export type ReminderRecipient = {
@@ -50,7 +50,7 @@ const toRecipient = (row: AdminDashboardRow): ReminderRecipient => ({
   suggested: suggestedTemplate(row),
 });
 
-export async function getReminderGroups(today = todayIso()): Promise<Record<ReminderTemplateKey, ReminderRecipient[]>> {
+export async function getReminderGroups(today?: string): Promise<Record<ReminderTemplateKey, ReminderRecipient[]>> {
   const out = Object.fromEntries(REMINDER_GROUPS.map((g) => [g.id, [] as ReminderRecipient[]])) as Record<ReminderTemplateKey, ReminderRecipient[]>;
   for (const row of await getAllAdminRows(today)) {
     const key = suggestedTemplate(row);
@@ -60,7 +60,7 @@ export async function getReminderGroups(today = todayIso()): Promise<Record<Remi
 }
 
 /** Specific courses picked on the dashboard (?courses=a,b). Unknown ids are skipped. */
-export async function getRecipientsFor(courseIds: string[], today = todayIso()): Promise<ReminderRecipient[]> {
+export async function getRecipientsFor(courseIds: string[], today?: string): Promise<ReminderRecipient[]> {
   const rows = await getAllAdminRows(today);
   return courseIds.flatMap((id) => {
     const row = rows.find((r) => r.id === id);
@@ -71,8 +71,8 @@ export async function getRecipientsFor(courseIds: string[], today = todayIso()):
 /** Values for a template's {{fields}} for one course. */
 export async function mergeValuesFor(courseId: string, admin: { name: string }, origin = ""): Promise<MergeValues> {
   const found = await getAdminCourse(courseId);
-  const facts = await getCourseFacts(courseId);
   if (!found) return { admin_name: admin.name };
+  const facts = factsOf(found);
   const { course, organizer } = found;
   const invoice = facts?.invoice;
   return {

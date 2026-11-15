@@ -55,7 +55,7 @@ export async function getAdminCourse(courseId: string): Promise<AdminCourse | un
 }
 
 /** Stored facts with every in-memory admin change applied. */
-function factsOf({ course, country, facts: s }: AdminCourse): CourseFacts & { country: Country } {
+export function factsOf({ course, country, facts: s }: AdminCourse): CourseFacts & { country: Country } {
   const funding = adminStore.funding.get(course.id);
   const quote = adminStore.quotes.get(course.id);
   const invoice = adminStore.invoices.get(course.id);
@@ -73,6 +73,11 @@ function factsOf({ course, country, facts: s }: AdminCourse): CourseFacts & { co
       accountingSubmitted: s.invoice.accountingSubmitted || invoice?.status === "accounting_submitted",
     },
   };
+}
+
+/** Facts for every course, from one load (server actions don't get React's per-request cache). */
+export async function getAllCourseFacts(): Promise<(CourseFacts & { country: Country })[]> {
+  return (await loadAdminCourses()).map(factsOf);
 }
 
 export async function getCourseFacts(courseId: string): Promise<(CourseFacts & { country: Country }) | undefined> {
@@ -120,13 +125,15 @@ function matches(row: AdminDashboardRow, f: AdminFilters): boolean {
 }
 
 /** Every course on the dashboard, with status worked out for today. */
-export async function getAllAdminRows(today = todayIso()): Promise<AdminDashboardRow[]> {
-  return (await loadAdminCourses()).map((c) => toDashboardRow(c, today));
+export async function getAllAdminRows(today?: string): Promise<AdminDashboardRow[]> {
+  await connection(); // statuses depend on today's date, so never prerender them
+  const day = today ?? todayIso();
+  return (await loadAdminCourses()).map((c) => toDashboardRow(c, day));
 }
 
 // Filtering happens here, not in SQL: the queue and "late" depend on today's date and the
 // in-memory admin changes. Fine at SKY's scale (tens of courses per term).
-export async function getAdminDashboard(filters: AdminFilters = NO_FILTERS, today = todayIso()): Promise<AdminDashboard> {
+export async function getAdminDashboard(filters: AdminFilters = NO_FILTERS, today?: string): Promise<AdminDashboard> {
   const all = await getAllAdminRows(today);
   const filtered = all.filter((r) => matches(r, filters));
 
