@@ -2,7 +2,7 @@
 
 Breaks `plan-v3.md` into sprints for **two engineers (or two coding agents) working at the same time**. Each piece of work has one owner, and the two owners never edit the same file in the same sprint. Where one engineer needs the other's work, the plan says exactly which merged PR to wait for.
 
-- **Engineer Aryan: Organizer side + data foundation.** Supabase schema, auth, the organizer pages and forms, form templates.
+- **Engineer Aryan: Organizer side + data foundation.** The Supabase connection (project, schema, clients), Google sign-in (Google Cloud setup and the code), the organizer pages and forms, form templates.
 - **Engineer Bhushan: IAHV admin side + email.** CI and tests setup, the admin dashboard and queues, admin actions, reminder emails, settings.
 
 Starting point: the `frontend-designs` pages (all reading sample data from `lib/mock-data.ts`). Every task ID below (A-2.1, B-3.1, …) is one PR.
@@ -17,7 +17,8 @@ Every path has one owner. Only the owner edits it. The other engineer may **impo
 | Path | Owner | Notes |
 |---|---|---|
 | `app/organizer/**` | A | |
-| `app/login/**`, `app/auth/**` | A | Sign-in, callback route |
+| `app/login/**`, `app/auth/**` | A | Google sign-in button, OAuth callback route |
+| Supabase project and Google Cloud OAuth client (outside the repo) | A | Dashboard settings, keys and redirect URLs; share the needed env var names with B |
 | `app/templates/**` | A | "My templates" page |
 | `app/admin/**` | B | Dashboard, queues, reminders, settings |
 | `components/organizer/**` | A | New organizer-only components |
@@ -27,6 +28,7 @@ Every path has one owner. Only the owner edits it. The other engineer may **impo
 | `supabase/migrations/*` | Per file (see 1.3) | |
 | `supabase/seed.sql` | A | |
 | `lib/supabase/**` | A | Server/browser clients, `requireRole()` |
+| `.env.example` | A | Lists every env var (Supabase URL/keys, Google client, Resend key). B asks A to add Resend's. |
 | `lib/db/database.types.ts` | A | Generated; regenerate only in A's PRs |
 | `lib/data/courses.ts`, `lib/data/organizer.ts`, `lib/data/templates.ts`, `lib/data/events.ts` | A | Data access for organizer features |
 | `lib/data/admin.ts`, `lib/data/reminders.ts`, `lib/data/settings.ts` | B | Data access for admin features |
@@ -86,7 +88,7 @@ Goal: everything both engineers need to work separately.
 | **A-0.2** Supabase project setup: `supabase init`, first migration with **all** plan-v3 tables, enums, indexes, RLS policies for the two roles, storage bucket + policies. ⏸ 0.1 | **B-0.1** CI: `.github/workflows/ci.yml` running lint, `tsc --noEmit`, unit tests, build. (New file; can start during 0.1.) |
 | **A-0.3** `lib/supabase/` server and browser clients, `requireRole('organizer' \| 'iahv_admin')` helper; list of server action names for both sides (in this file, section 3). | **B-0.2** Test harness: `vitest.config.ts`, `playwright.config.ts`, unit tests for `lib/pricing.ts`, `lib/steps.ts`, `lib/dates.ts`. ⏸ 0.1 |
 | **A-0.4** `supabase/seed.sql` from the current sample data (same courses, organizers, statuses); generate `lib/db/database.types.ts`. ⏸ A-0.2 | **B-0.3** `lib/validation/` Zod schemas for every form (course, funding request, quote, invoice, reminder email), matching plan-v3's validation rules. ⏸ 0.1 |
-| **A-0.5** Auth: magic-link sign-in on `/login`, callback route, new users default to `organizer`, middleware/proxy protecting `/organizer/**` and `/admin/**` by role. ⏸ A-0.3 | **B-0.4** v3 copy on admin pages: remove the "Automatic reminders" panel from `/admin/reminders`; show From/To in the reminder preview. |
+| **A-0.5** Google sign-in: create the Google Cloud OAuth client (consent screen, authorized redirect URLs for localhost, Vercel previews and production); turn on the Google provider in Supabase Auth with that client ID/secret; "Continue with Google" on `/login`; `app/auth/callback` route exchanging the code for a session; new users get a `profiles` row with role `organizer`; middleware/proxy protecting `/organizer/**` and `/admin/**` by role. Document the env vars in `.env.example`. ⏸ A-0.3 | **B-0.4** v3 copy on admin pages: remove the "Automatic reminders" panel from `/admin/reminders`; show From/To in the reminder preview. |
 
 ### Sprint 1: Real data, read path
 Goal: every existing page reads from Supabase instead of sample data.
@@ -195,6 +197,6 @@ From plan-v3. Each one's owner chases the answer before the sprint that needs it
 |---|---|---|---|
 | 1 | Quote/invoice numbers entered by hand or generated? | Sprint 3 | B |
 | 2 | Who approves funding; hard gate or advisory? | Sprint 5 | B |
-| 7 | Login: SSO or invited email? | Sprint 0 (A-0.5) | A |
+| 7 | ~~Login method~~ Decided: Google sign-in through Supabase Auth. Still to confirm: do all campuses and IAHV use Google accounts for their email? | Sprint 0 (A-0.5) | A |
 | 8 | Can `iahv.org` be verified in Resend for per-admin From? | Sprint 4 (B-4.1) | B |
 | 9 | Shared admin templates? | Later (not in these sprints) | A |

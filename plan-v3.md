@@ -27,10 +27,10 @@ One web app that walks SKY Campus organizers through the 8 course steps, sends t
 - **organizer:** sees and edits only their own courses, documents and templates.
 - **iahv_admin:** sees all courses; approves funding; enters quote/invoice numbers; marks paid/closed; sends reminder emails; manages users, roles, email templates and pricing constants.
 
-New sign-ins become organizers. Only an IAHV admin can make someone an admin.
+Everyone signs in with **Google** (Supabase Auth's Google provider). New sign-ins become organizers. Only an IAHV admin can make someone an admin.
 
 ### Pages
-**Shared:** Sign-in (magic link; campus domains for organizers, invited emails for admins), profile, **My templates** (list, rename, delete).
+**Shared:** Sign-in ("Continue with Google"; first sign-in creates an organizer profile), profile, **My templates** (list, rename, delete).
 
 **Organizer**
 - My courses: cards with progress bar, "next action", blockers.
@@ -178,10 +178,10 @@ sequenceDiagram
 - Rename "Finance" wording to "IAHV admin" where it refers to a role (e.g. "IAHV Finance is reviewing" -> "IAHV is reviewing").
 - `/admin/reminders`: remove the "Automatic reminders" panel; show From (the signed-in admin) and To (each organizer's email) in the preview; "Recently sent" shows who sent each one.
 - Add "Save as template" / "Start from template" controls to the step 1, 3 and 4 forms and the reminder composer; add a "My templates" page.
-- Login: two roles only (already the case).
+- Login: replace the email field with a "Continue with Google" button. The organizer/admin picker goes away; the role comes from the user's profile after sign-in.
 
 ### Build order
-0. **Foundation:** Supabase schema + RLS + seed, CI, Vercel deploy, auth with the two roles. Swap `lib/mock-data.ts` functions for queries.
+0. **Foundation:** Supabase project and connection, schema + RLS + seed, CI, Vercel deploy, Google sign-in with the two roles. Swap `lib/mock-data.ts` functions for queries.
 1. **Courses + stepper:** add course, step statuses, my-courses list (steps 1, 2, 5, 6 as simple checklists).
 2. **Invoice slice (highest value):** clients, pricing, invoice request form, admin queue to enter invoice #, steps 7-8, lifecycle, overdue flag.
 3. **Admin dashboard:** all courses, filters, queues.
@@ -208,6 +208,6 @@ sequenceDiagram
 4. Can the flat-rate student fee be partial?
 5. Cancellation/dropout payment rules.
 6. Is Canada/GST needed for the demo?
-7. Login method: IAHV/university SSO, or invited email?
+7. ~~Login method~~ **Decided (v3): Google sign-in via Supabase Auth.** Still to confirm: do all campus organizers and IAHV staff have Google accounts for their email? If some campuses use Microsoft accounts, add a second provider or an email-link fallback later.
 8. **(v3)** Can we verify `iahv.org` in Resend so emails are sent from each admin's own address? If not, use a shared sender with the admin as Reply-To.
 9. **(v3)** Should IAHV admins be able to share templates with each other (or with organizers)?
