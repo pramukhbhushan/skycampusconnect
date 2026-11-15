@@ -51,16 +51,24 @@ export async function listMyOpenPriorCourses(course: Course): Promise<Course[]> 
   return openPriorCourses(course, await listMyCourses());
 }
 
+/** Saved step data (checklists) of my course, by step number. */
+export async function getMyStepData(courseId: string): Promise<Record<number, unknown>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("course_steps").select("step_no, data").eq("course_id", courseId);
+  if (error) throw new Error(`Could not load the course steps: ${error.message}`);
+  return Object.fromEntries(data.map((row) => [row.step_no, row.data]));
+}
+
 /** The campus-requirements checklist saved on step 1 of my course. */
 export async function getMyStep1Requirements(courseId: string): Promise<boolean[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("course_steps")
-    .select("data")
-    .eq("course_id", courseId)
-    .eq("step_no", 1)
-    .maybeSingle();
-  if (error) throw new Error(`Could not load step 1: ${error.message}`);
-  const saved = (data?.data as { requirements?: unknown } | null)?.requirements;
+  const saved = ((await getMyStepData(courseId))[1] as { requirements?: unknown } | undefined)?.requirements;
   return Array.isArray(saved) ? saved.map((v) => v === true) : [];
+}
+
+/** Students who completed my course (step 6). Not on the shared Course type (lib/types.ts is frozen). */
+export async function getMyActualParticipants(courseId: string): Promise<number | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("courses").select("actual_participants").eq("id", courseId).maybeSingle();
+  if (error) throw new Error(`Could not load the course: ${error.message}`);
+  return data?.actual_participants ?? null;
 }

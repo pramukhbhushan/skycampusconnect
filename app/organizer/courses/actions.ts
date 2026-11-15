@@ -16,6 +16,13 @@ import {
   type CourseDraft,
   type FieldErrors,
 } from "@/lib/organizer/course-form";
+import {
+  checklistStatus,
+  isChecklistStep,
+  parseStepUpdate,
+  type ChecklistStep,
+  type StepErrors,
+} from "@/lib/organizer/step-checklists";
 
 type Db = Awaited<ReturnType<typeof createClient>>;
 
@@ -133,4 +140,67 @@ export async function saveCourseForm(_prev: CourseFormState, fd: FormData): Prom
   revalidatePath("/organizer");
   if (intent === "draft") redirect("/organizer");
   redirect(needsFundingApproval(parsed.data.funders ?? []) ? `/organizer/courses/${id}/funding` : `/organizer/courses/${id}/invoice`);
+}
+
+export type StepFormState = { errors?: StepErrors; saved?: boolean };
+
+/**
+ * Saves the checklist of step 2, 5 or 6 on one of the signed-in organizer's courses.
+ * Step 2 also saves the Journey course ID; step 6 the number of students who completed.
+ */
+export async function updateStep(courseId: string, stepNo: number, input: unknown): Promise<void> {
+  const me = await requireRole("organizer");
+  if (!isChecklistStep(stepNo)) throw new Error(`Step ${stepNo} has no checklist`);
+  const step: ChecklistStep = stepNo;
+  const parsed = parseStepUpdate(step, (input ?? {}) as { checks?: unknown; value?: unknown });
+  if (!parsed.ok) throw new Error(`Invalid step: ${Object.values(parsed.errors).join("; ")}`);
+  const { update } = parsed;
+  const db = await createClient();
+
+  // Course fields first; also proves the course is the caller's.
+  const courseFields =
+    step === 2 ? { journey_course_id: update.journeyCourseId ?? null } : step === 6 ? { actual_participants: update.actualParticipants ?? null } : {};
+  const owned = Object.keys(courseFields).length
+    ? await db.from("courses").update(courseFields).eq("id", courseId).eq("organizer_id", me.id).select("id")
+    : await db.from("courses").select("id").eq("id", courseId).eq("organizer_id", me.id);
+  if (owned.error) throw new Error(`Could not save the step: ${owned.error.message}`);
+  if (owned.data.length === 0) throw new Error("Course not found");
+
+  const status = checklistStatus(step, update);
+  const { error } = await db
+    .from("course_steps")
+    .update({
+      status,
+      data: { checks: update.checks },
+      completed_at: status === "done" ? new Date().toISOString() : null,
+      completed_by: status === "done" ? me.id : null,
+    })
+    .eq("course_id", courseId)
+    .eq("step_no", step);
+  if (error) throw new Error(`Could not save the step: ${error.message}`);
+
+  await logEvent(courseId, "step.updated", { step, status });
+}
+
+/** The checklist form on the course page. Stays on the page and shows "Saved". */
+export async function saveStepForm(_prev: StepFormState, fd: FormData): Promise<StepFormState> {
+  const courseId = String(fd.get("courseId") ?? "");
+  const stepNo = Number(fd.get("stepNo"));
+  if (!isChecklistStep(stepNo)) return { errors: { form: "Unknown step" } };
+  // Checkboxes only submit when ticked, so read them by index.
+  const raw = {
+    checks: Array.from({ length: 3 }, (_, i) => fd.get(`check${i}`) === "on"),
+    value: fd.get("value") ?? undefined,
+  };
+
+  const parsed = parseStepUpdate(stepNo, raw);
+  if (!parsed.ok) return { errors: parsed.errors };
+  try {
+    await updateStep(courseId, stepNo, raw);
+  } catch (e) {
+    return { errors: { form: e instanceof Error ? e.message : "Something went wrong. Please try again." } };
+  }
+  revalidatePath(`/organizer/courses/${courseId}`);
+  revalidatePath("/organizer");
+  return { saved: true };
 }
