@@ -47,3 +47,26 @@ export const INVOICE_STATUS_LABEL = {
   closed: "Closed",
   rejected: "Returned by IAHV",
 } as const;
+
+/** "03/05/2027" from a date or timestamp. */
+function mmddyyyy(iso: string): string {
+  return `${iso.slice(5, 7)}/${iso.slice(8, 10)}/${iso.slice(0, 4)}`;
+}
+
+/**
+ * Copy-ready text for Journey course accounting (plan-v3: "invoice # X for $Y paid by ...").
+ * Before payment it names who the invoice is billed to and when it's due; after, when it was paid.
+ */
+export function journeyAccountingText(inv: {
+  number: string;
+  amount: number | null;
+  clientName: string | null;
+  dueDate: string | null;
+  paidAt: string | null;
+}): string {
+  const amount =
+    inv.amount === null ? "" : ` for $${inv.amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const who = inv.clientName ? ` ${inv.paidAt ? "paid by" : "billed to"} ${inv.clientName}` : "";
+  const when = inv.paidAt ? ` on ${mmddyyyy(inv.paidAt)}` : inv.dueDate ? `, due ${mmddyyyy(inv.dueDate)}` : "";
+  return `Invoice # ${inv.number}${amount}${who}${when}.`;
+}

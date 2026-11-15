@@ -98,3 +98,30 @@ export async function saveInvoiceForm(_prev: InvoiceFormState, fd: FormData): Pr
   revalidatePath(`/organizer/courses/${courseId}`);
   redirect(`/organizer/courses/${courseId}/invoice`);
 }
+
+export type AccountingState = { error?: string };
+
+/**
+ * Step 7 (contract name submitAccounting): the organizer has entered the invoice # in
+ * Journey course accounting. submit_accounting() checks attendance is recorded and the
+ * invoice # exists, then marks the invoice accounting_submitted and step 7 done.
+ */
+export async function submitAccounting(courseId: string): Promise<void> {
+  await requireRole("organizer");
+  const db = await createClient();
+  const { data: invoiceId, error } = await db.rpc("submit_accounting", { p_course_id: courseId });
+  if (error) throw new Error(error.message);
+  await logEvent(courseId, "accounting.submitted", { invoiceId });
+}
+
+export async function submitAccountingForm(_prev: AccountingState, fd: FormData): Promise<AccountingState> {
+  const courseId = String(fd.get("courseId") ?? "");
+  try {
+    await submitAccounting(courseId);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Something went wrong. Please try again." };
+  }
+  revalidatePath("/organizer");
+  revalidatePath(`/organizer/courses/${courseId}`);
+  redirect(`/organizer/courses/${courseId}/invoice`);
+}

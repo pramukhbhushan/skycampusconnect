@@ -1102,6 +1102,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      submit_accounting: { Args: { p_course_id: string }; Returns: string }
       settle_quote: {
         Args: {
           p_quote_id: string

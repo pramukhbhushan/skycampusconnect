@@ -61,7 +61,7 @@ describe("courseCard", () => {
 
   it("says what the next step needs", () => {
     expect(courseCard(course([D, T, T, T, T, T, T, T], { journeyCourseId: null }), none).next).toContain("add its course ID");
-    expect(courseCard(course([D, D, T, T, T, T, T, T], { journeyCourseId: null }), none).cta.label).toBe("Add Journey ID");
+    expect(courseCard(course([D, D, T, T, T, T, T, T], { journeyCourseId: null }), none).next).toContain("IAHV needs it before approving");
     expect(courseCard(course([D, D, T, T, T, T, T, T]), none).cta.label).toBe("Request funding approval");
     expect(courseCard(course([D, D, "skipped", T, T, T, T, T]), none).cta.label).toBe("Request invoice");
     expect(courseCard(course([D, D, "skipped", D, T, T, T, T]), none).next).toContain("sign-ups");

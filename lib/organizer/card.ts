@@ -102,9 +102,13 @@ export function courseCard(course: Course, progress: CourseProgress = NO_PROGRES
         base,
       );
     case 3:
-      return course.journeyCourseId
-        ? todo("request funding approval with your proof of funds.", "Request funding approval", `${base}/funding`)
-        : todo("add the Journey course ID (step 2) first; IAHV needs it to approve funding.", "Add Journey ID", base);
+      return todo(
+        course.journeyCourseId
+          ? "request funding approval with your proof of funds."
+          : "request funding approval, and add the Journey course ID (step 2): IAHV needs it before approving.",
+        "Request funding approval",
+        `${base}/funding`,
+      );
     case 4:
       return todo("request your invoice.", "Request invoice", `${base}/invoice`);
     case 5:

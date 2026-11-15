@@ -129,6 +129,9 @@ export type MyInvoice = {
   amount: number | null;
   dueDate: string | null;
   requestedAt: string;
+  clientName: string | null;
+  accountingSubmittedAt: string | null;
+  paidAt: string | null;
 };
 
 /** The current (not rejected) invoice of my course, if one was requested. */
@@ -136,7 +139,7 @@ export async function getMyInvoice(courseId: string): Promise<MyInvoice | null> 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("invoices")
-    .select("id, status, invoice_number, amount, due_date, requested_at")
+    .select("id, status, invoice_number, amount, due_date, requested_at, accounting_submitted_at, paid_at, clients!invoices_client_id_fkey(full_name)")
     .eq("course_id", courseId)
     .neq("status", "rejected")
     .order("requested_at", { ascending: false })
@@ -144,7 +147,18 @@ export async function getMyInvoice(courseId: string): Promise<MyInvoice | null> 
     .maybeSingle();
   if (error) throw new Error(`Could not load the invoice: ${error.message}`);
   return data
-    ? { id: data.id, status: data.status, number: data.invoice_number, amount: data.amount, dueDate: data.due_date, requestedAt: data.requested_at }
+    ? {
+        id: data.id,
+        status: data.status,
+        number: data.invoice_number,
+        amount: data.amount,
+        dueDate: data.due_date,
+        requestedAt: data.requested_at,
+        // Many-to-one, so PostgREST returns one object; the generated types say array.
+        clientName: (Array.isArray(data.clients) ? data.clients[0]?.full_name : (data.clients as { full_name?: string } | null)?.full_name) ?? null,
+        accountingSubmittedAt: data.accounting_submitted_at,
+        paidAt: data.paid_at,
+      }
     : null;
 }
 
