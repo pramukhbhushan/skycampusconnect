@@ -4,7 +4,7 @@ Source: `raw-forms/Invoice request form for SKY Campus.pdf` (Google Form, IAHV; 
 
 **Purpose (from form):** request an invoice listing services provided. Only after a **formal written agreement** (contract/MOU signed by both, PO, grant acceptance letter, etc., a.k.a. "funding confirmation documentation") exists. If funding is not 100% confirmed, do **not** request an invoice; request a quote instead. Teachers/organizers have all participant info by end of day 1 of the course.
 
-Maps to plan.md **Step 4** (invoice branch), feeding **Steps 7-8** (invoice number in course accounting; track payment until closed). This is the highest-value form: the meeting notes' core pain is forgotten invoice requests, missing invoice numbers, and placeholder invoices.
+Maps to plan-v3.md **Step 4** (invoice branch), feeding **Steps 7-8** (invoice number in course accounting; track payment until closed). This is the highest-value form: the meeting notes' core pain is forgotten invoice requests, missing invoice numbers, and placeholder invoices.
 
 ## Questions (extracted)
 
