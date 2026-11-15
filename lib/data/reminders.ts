@@ -1,7 +1,7 @@
 // Sample data until the backend lands. Owner: Engineer B (Bhushan) (sprint-planning.md 1.1).
 // Swap the function bodies for Supabase queries; keep the signatures.
 
-import type { ReminderGroup, ReminderRule, SentReminder } from "@/lib/types";
+import type { ReminderGroup, SentReminder } from "@/lib/types";
 
 export const reminderGroups: ReminderGroup[] = [
   {
@@ -54,16 +54,8 @@ export const reminderGroups: ReminderGroup[] = [
   },
 ];
 
-// Removed in plan-v3 (no automatic reminders); still read by /admin/reminders on main until B-0.4 merges.
-export const reminderRules: ReminderRule[] = [
-  { id: "start", title: "Request your invoice", when: "On the first day of a course with no invoice request", enabled: true },
-  { id: "end", title: "Invoice still missing", when: "When a course ends and there’s still no invoice request", enabled: true },
-  { id: "acct", title: "Submit course accounting", when: "3 days after a course ends, if not submitted", enabled: true },
-  { id: "overdue", title: "Payment overdue", when: "The day after the due date, to the organizer and the SKY Campus Desk", enabled: true },
-];
-
 export const sentReminders: SentReminder[] = [
-  { id: "s1", title: "Payment overdue", target: "Rutgers Fall Retreat", when: "Nov 10 · automatic" },
-  { id: "s2", title: "Request your invoice", target: "2 courses", when: "Nov 8 · sent by IAHV Finance" },
-  { id: "s3", title: "Funding approved", target: "GWU Fall Retreat", when: "Oct 2 · automatic" },
+  { id: "s1", title: "Payment overdue", target: "Rutgers Fall Retreat", when: "Nov 10 · sent by IAHV admin" },
+  { id: "s2", title: "Request your invoice", target: "2 courses", when: "Nov 8 · sent by IAHV admin" },
+  { id: "s3", title: "Funding approved", target: "GWU Fall Retreat", when: "Oct 2 · sent by IAHV admin" },
 ];

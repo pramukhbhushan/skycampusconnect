@@ -1,0 +1,43 @@
+# CI for every pull request and every push to main (sprint-planning.md, task B-0.1).
+# main must stay green: lint, typecheck, unit tests and build all pass.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # Next generates the PageProps/LayoutProps route types; tsc needs them first.
+      - name: Typecheck
+        run: |
+          npx next typegen
+          npx tsc --noEmit
+
+      # Runs once a "test" script exists (added with the test harness, B-0.2).
+      - name: Unit tests
+        run: npm test --if-present
+
+      - name: Build
+        run: npm run build
