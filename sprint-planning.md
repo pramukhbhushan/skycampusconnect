@@ -197,6 +197,6 @@ From plan-v3. Each one's owner chases the answer before the sprint that needs it
 |---|---|---|---|
 | 1 | Quote/invoice numbers entered by hand or generated? | Sprint 3 | B |
 | 2 | Who approves funding; hard gate or advisory? | Sprint 5 | B |
-| 7 | ~~Login method~~ Decided: Google sign-in through Supabase Auth. Still to confirm: do all campuses and IAHV use Google accounts for their email? | Sprint 0 (A-0.5) | A |
+| 7 | ~~Login method~~ Decided: Google sign-in through Supabase Auth. Confirmed everyone uses Google accounts. | Done | A |
 | 8 | Can `iahv.org` be verified in Resend for per-admin From? | Sprint 4 (B-4.1) | B |
 | 9 | Shared admin templates? | Later (not in these sprints) | A |

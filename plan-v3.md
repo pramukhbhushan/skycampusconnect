@@ -208,6 +208,6 @@ sequenceDiagram
 4. Can the flat-rate student fee be partial?
 5. Cancellation/dropout payment rules.
 6. Is Canada/GST needed for the demo?
-7. ~~Login method~~ **Decided (v3): Google sign-in via Supabase Auth.** Still to confirm: do all campus organizers and IAHV staff have Google accounts for their email? If some campuses use Microsoft accounts, add a second provider or an email-link fallback later.
+7. ~~Login method~~ **Decided (v3): Google sign-in via Supabase Auth, for everyone.** Confirmed: all organizers and IAHV staff use Google accounts. No other sign-in method is needed.
 8. **(v3)** Can we verify `iahv.org` in Resend so emails are sent from each admin's own address? If not, use a shared sender with the admin as Reply-To.
 9. **(v3)** Should IAHV admins be able to share templates with each other (or with organizers)?
