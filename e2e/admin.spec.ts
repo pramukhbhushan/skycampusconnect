@@ -4,6 +4,12 @@ import { expect, test, type Page } from "@playwright/test";
 
 const courseRows = (page: Page) => page.getByRole("checkbox", { name: /^Select / });
 
+// Skipped: these tests drive the old sample courses (purdue-winter-2027, 8 rows, Maya Chen),
+// which B-1.1 replaced with Supabase, and they run signed out, which /admin no longer allows.
+// The dashboard and course detail are now covered by e2e/profiles.spec.ts (as Kelsi).
+// TODO(B-3.1): rebuild the action/reminder/settings tests on seeded e2e-project courses.
+test.skip(true, "Sample-data admin tests; replaced by profiles.spec.ts until B-3.1 rebuilds them on Supabase data");
+
 test.beforeEach(async ({ request }) => {
   expect((await request.post("/admin/dev-reset")).ok()).toBe(true);
 });
