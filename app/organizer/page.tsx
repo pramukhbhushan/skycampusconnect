@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowRight, ChatBubble, Plus } from "@/components/icons";
 import { ProgressSegments, StatusPill } from "@/components/ui";
 import { formatRange } from "@/lib/dates";
-import { getCurrentOrganizer, getOrganizerCourses } from "@/lib/mock-data";
+import { getCurrentOrganizer, getOrganizerCourses } from "@/lib/data/organizer";
 import { COURSE_TYPE_LABEL } from "@/lib/pricing";
 import { STEP_NAMES, currentStep, describeSteps, doneCount } from "@/lib/steps";
 

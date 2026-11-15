@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { formatRange } from "@/lib/dates";
-import { courses, getCourse } from "@/lib/mock-data";
+import { courses, getCourse } from "@/lib/data/courses";
 import { COURSE_TYPE_LABEL } from "@/lib/pricing";
 import type { Course } from "@/lib/types";
 

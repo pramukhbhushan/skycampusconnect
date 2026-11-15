@@ -1,5 +1,5 @@
 import { AppHeader } from "@/components/app-header";
-import { adminUser } from "@/lib/mock-data";
+import { adminUser } from "@/lib/data/admin";
 
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {
   return (

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { reminderGroups, reminderRules, sentReminders } from "@/lib/mock-data";
+import { reminderGroups, reminderRules, sentReminders } from "@/lib/data/reminders";
 import { Reminders } from "./reminders";
 
 export const metadata: Metadata = { title: "Email reminders" };
