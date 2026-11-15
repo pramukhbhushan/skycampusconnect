@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CourseHeader, StepLayout } from "@/components/course-stepper";
-import { Clock, Upload, Warning } from "@/components/icons";
-import { Callout, Card, Eyebrow, FileRow, SideCard, TextArea, TextField } from "@/components/ui";
+import { Clock, Warning } from "@/components/icons";
+import { Callout, Card, Eyebrow, SideCard, TextArea, TextField } from "@/components/ui";
 import { formatNumeric } from "@/lib/dates";
-import { getMe, listMyOpenPriorCourses } from "@/lib/data/organizer-db";
+import { DocumentUpload } from "@/components/organizer/document-upload";
+import { getMe, listMyCourseDocuments, listMyOpenPriorCourses } from "@/lib/data/organizer-db";
 import { STEP_NAMES, currentStep } from "@/lib/steps";
 import { courseSubtitle, loadCourse } from "../course-data";
 import { AgreementChoice, FundingFooter, StudentFeeChoice } from "./funding-choices";
@@ -16,7 +17,10 @@ export default async function FundingPage({ params }: PageProps<"/organizer/cour
   const course = await loadCourse(params);
   const organizer = await getMe();
   const funding = course.funding;
-  const openPrior = await listMyOpenPriorCourses(course);
+  const [openPrior, proofOfFunds] = await Promise.all([
+    listMyOpenPriorCourses(course),
+    listMyCourseDocuments(course.id, "proof_of_funds"),
+  ]);
   const steps = course.steps.map((s, i) => (i === 2 && s === "todo" ? "in_progress" : s));
 
   return (
@@ -121,35 +125,13 @@ export default async function FundingPage({ params }: PageProps<"/organizer/cour
               <h2 className="text-xl font-bold">Proof of funds</h2>
               <p className="text-[15px] text-muted">Up to 5 PDFs, 10 MB each. It&apos;s saved once and reused for your invoice.</p>
             </div>
-            {funding?.documents.map((d) => (
-              <FileRow
-                key={d.id}
-                name={d.name}
-                meta={`${d.size} · uploaded ${d.uploadedOn}`}
-                action={
-                  <button
-                    type="button"
-                    className="min-h-10 cursor-pointer rounded-[10px] border border-line bg-white px-3.5 text-sm font-semibold text-ink-soft"
-                  >
-                    Remove
-                  </button>
-                }
-              />
-            ))}
-            {/* TODO(backend): upload to Supabase Storage and insert into `documents`. */}
-            <label
-              htmlFor="f-upload"
-              className="relative flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-field bg-faint p-[26px] text-center"
-            >
-              <Upload size={26} className="text-brand" />
-              <span className="text-[15px] font-semibold text-brand-dark">
-                {funding?.documents.length ? "Add another PDF" : "Upload a PDF"}
-              </span>
-              <span className="text-[13px] text-muted">
-                Must show: funding organization, approved amount, that it&apos;s for a SKY Campus course, and written approval
-              </span>
-              <input id="f-upload" type="file" accept="application/pdf" className="sr-only" />
-            </label>
+            <DocumentUpload
+              courseId={course.id}
+              kind="proof_of_funds"
+              name="proofOfFundsIds"
+              initial={proofOfFunds}
+              hint="Must show: funding organization, approved amount, that it's for a SKY Campus course, and written approval"
+            />
           </Card>
 
           <AgreementChoice initial={funding?.agreement ?? "yes"} />

@@ -6,10 +6,10 @@
 // courses. These read cookies: call them from code that sits behind <Suspense>.
 
 import { cache } from "react";
-import type { Course } from "@/lib/types";
+import type { Course, UploadedDocument } from "@/lib/types";
 import { requireRole, type CurrentUser } from "@/lib/supabase/require-role";
 import { createClient } from "@/lib/supabase/server";
-import { COURSE_SELECT, initialsOf, openPriorCourses, toCourse } from "./course-mapper";
+import { COURSE_SELECT, formatFileSize, formatMonthDay, initialsOf, openPriorCourses, toCourse } from "./course-mapper";
 
 /** The signed-in organizer, checked once per request. */
 export const getMe = cache(async (): Promise<CurrentUser & { initials: string }> => {
@@ -71,4 +71,17 @@ export async function getMyActualParticipants(courseId: string): Promise<number 
   const { data, error } = await supabase.from("courses").select("actual_participants").eq("id", courseId).maybeSingle();
   if (error) throw new Error(`Could not load the course: ${error.message}`);
   return data?.actual_participants ?? null;
+}
+
+/** PDFs uploaded to my course, optionally of one kind, oldest first. */
+export async function listMyCourseDocuments(
+  courseId: string,
+  kind?: "proof_of_funds" | "agreement" | "other",
+): Promise<UploadedDocument[]> {
+  const supabase = await createClient();
+  let query = supabase.from("documents").select("id, file_name, size_bytes, created_at").eq("course_id", courseId);
+  if (kind) query = query.eq("kind", kind);
+  const { data, error } = await query.order("created_at", { ascending: true });
+  if (error) throw new Error(`Could not load the files: ${error.message}`);
+  return data.map((d) => ({ id: d.id, name: d.file_name, size: formatFileSize(d.size_bytes), uploadedOn: formatMonthDay(d.created_at) }));
 }
