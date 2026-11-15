@@ -213,7 +213,7 @@ export function InvoiceForm({
         </Card>
 
         <div className="flex flex-wrap justify-between gap-3">
-          <ButtonLink href={`/organizer/courses/${courseId}/funding`} variant="secondary" className="px-[22px]">← Back</ButtonLink>
+          <ButtonLink href={`/organizer/courses/${courseId}`} variant="secondary" className="px-[22px]">← All steps</ButtonLink>
           <div className="flex flex-wrap gap-3">
             <ButtonLink href="/organizer" variant="secondary" className="px-[22px]">Save draft</ButtonLink>
             <ButtonLink href="/organizer">Submit {noun} request</ButtonLink>
