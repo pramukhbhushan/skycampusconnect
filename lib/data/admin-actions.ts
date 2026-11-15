@@ -15,6 +15,7 @@ import { unknownFields, type EmailTemplate } from "@/lib/email/templates";
 import type { PricingConstants } from "@/lib/pricing";
 import type { Role } from "@/lib/types";
 import { getAllCourseFacts, getCourseFacts } from "./admin";
+import { saveUserRole } from "./admin-db";
 import { adminStore, logActivity } from "./admin-store";
 import { getUsers } from "./settings";
 
@@ -86,7 +87,9 @@ export async function setUserRole(userId: string, role: Role, actingAdminId: str
     if (userId === actingAdminId) return fail("You can't remove your own admin access. Ask another IAHV admin.");
     if (users.filter((u) => u.role === "iahv_admin").length <= 1) return fail("There must be at least one IAHV admin.");
   }
-  adminStore.roles.set(userId, role);
+  // set_user_role checks the same rules again in Postgres, as the signed-in admin.
+  const saved = await saveUserRole(userId, role);
+  if (saved.error) return fail(`${saved.error}.`);
   return { ok: true, message: `${user.name} is now ${role === "iahv_admin" ? "an IAHV admin" : "an organizer"}.` };
 }
 

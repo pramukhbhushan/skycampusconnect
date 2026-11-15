@@ -135,8 +135,46 @@ test.describe("reminder emails (B-4.3)", () => {
   });
 });
 
+test.describe("users & roles (B-2.2)", () => {
+  const SAM = byId("org-toronto");
+  const userRow = (page: Page, email: string) => page.getByRole("row").filter({ hasText: email });
+
+  test("promote an organizer to admin, then change them back", async ({ page, browser }) => {
+    await page.goto("/admin/settings");
+    await expect(userRow(page, KELSI.email)).toContainText("IAHV admin");
+    await expect(userRow(page, SAM.email)).toContainText("Organizer");
+
+    await userRow(page, SAM.email).getByRole("button", { name: "Make admin" }).click();
+    await expect(page.getByRole("status")).toContainText("is now an IAHV admin");
+    await expect(userRow(page, SAM.email)).toContainText("IAHV admin");
+
+    // Sam gets the admin view on their next page load, no sign-out needed.
+    const sam = await browser.newContext({ storageState: authFile(SAM.id) });
+    try {
+      const samPage = await sam.newPage();
+      await samPage.goto("/organizer");
+      await expect(samPage).toHaveURL(/\/admin$/);
+      await expect(samPage.getByRole("heading", { name: "All SKY Campus courses" })).toBeVisible();
+
+      // Back to organizer, so the other tests still see Sam as one.
+      await userRow(page, SAM.email).getByRole("button", { name: "Make organizer" }).click();
+      await expect(page.getByRole("status")).toContainText("is now an organizer");
+      await samPage.goto("/admin");
+      await expect(samPage).toHaveURL(/\/organizer$/);
+    } finally {
+      await sam.close();
+    }
+  });
+
+  test("you can't remove your own admin access", async ({ page }) => {
+    await page.goto("/admin/settings");
+    await userRow(page, KELSI.email).getByRole("button", { name: "Make organizer" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "You can't remove your own admin access" })).toBeVisible();
+    await expect(userRow(page, KELSI.email)).toContainText("IAHV admin");
+  });
+});
+
 test.describe("settings (B-4.4, B-5.3)", () => {
-  // Users & roles still lists sample people until B-2.2 reads profiles, so it isn't tested here.
 
   test("edit a reminder text; misspelled fields can't be saved", async ({ page }) => {
     await page.goto("/admin/settings");

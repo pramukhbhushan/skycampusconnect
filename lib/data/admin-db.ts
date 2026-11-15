@@ -9,7 +9,7 @@ import type { Country } from "@/lib/admin/filters";
 import type { Database } from "@/lib/db/database.types";
 import { requireRole, type CurrentUser } from "@/lib/supabase/require-role";
 import { createClient } from "@/lib/supabase/server";
-import type { Course, Organizer } from "@/lib/types";
+import type { Course, Organizer, Role } from "@/lib/types";
 import type { StoredActivity } from "./admin-store";
 import { COURSE_SELECT, initialsOf, toCourse } from "./course-mapper";
 
@@ -141,4 +141,35 @@ export async function loadCourseEvents(courseId: string): Promise<StoredActivity
       text: describeEvent(e.type, (e.payload ?? {}) as EventPayload),
     };
   });
+}
+
+// ---- Users & roles (B-2.2) ------------------------------------------------------------
+
+export type AppUser = { id: string; name: string; email: string; role: Role; campus: string | null };
+
+/** Everyone who has signed in (RLS lets admins read every profile), admins first, then by name. */
+export async function loadUsers(): Promise<AppUser[]> {
+  await requireRole("iahv_admin");
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, name, email, role, campus:campuses(name)")
+    .order("role", { ascending: false })
+    .order("name", { ascending: true });
+  if (error) throw new Error(`Could not load users: ${error.message}`);
+  return data.map((p) => {
+    // One campus per profile; the generated types call it a list, so accept either shape.
+    const campus = (Array.isArray(p.campus) ? p.campus[0] : p.campus) as { name: string } | null | undefined;
+    return { id: p.id, name: p.name || p.email, email: p.email, role: p.role, campus: campus?.name ?? null };
+  });
+}
+
+/**
+ * Changes a role through set_user_role, which runs as the signed-in admin and refuses to
+ * remove your own admin access or the last admin. Returns the database's reason on failure.
+ */
+export async function saveUserRole(userId: string, role: Role): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_user_role", { p_user_id: userId, p_role: role });
+  return { error: error ? error.message : null };
 }

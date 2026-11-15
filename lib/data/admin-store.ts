@@ -3,7 +3,6 @@
 // supabase/migrations/*_b_admin_transitions.sql) once A-0.3 provides the client;
 // until then changes last until the dev server restarts.
 import type { PricingConstants } from "@/lib/pricing";
-import type { Role } from "@/lib/types";
 import type { FundingStatus, InvoiceStatus, QuoteStatus } from "@/lib/admin/transitions";
 
 export type StoredActivity = { at: string; actor: string; text: string };
@@ -17,7 +16,6 @@ type AdminStore = {
   sent: StoredReminder[];
   templates: Map<string, { subject: string; body: string }>;
   pricing: PricingConstants | null;
-  roles: Map<string, Role>;
 };
 
 const fresh = (): AdminStore => ({
@@ -28,7 +26,6 @@ const fresh = (): AdminStore => ({
   sent: [],
   templates: new Map(),
   pricing: null,
-  roles: new Map(),
 });
 
 // Kept on globalThis so it survives hot reloads in development.
