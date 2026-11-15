@@ -13,9 +13,9 @@ const ORGANIZER_NAV: NavItem[] = [
 ];
 
 const ADMIN_NAV: NavItem[] = [
-  { label: "Courses", href: "/admin", match: (p) => p === "/admin" },
+  { label: "Courses", href: "/admin", match: (p) => p === "/admin" || p.startsWith("/admin/courses") },
   { label: "Email reminders", href: "/admin/reminders", match: (p) => p.startsWith("/admin/reminders") },
-  { label: "Settings", href: "/admin#settings", match: () => false },
+  { label: "Settings", href: "/admin/settings", match: (p) => p.startsWith("/admin/settings") },
 ];
 
 export function AppHeader({ role, initials }: { role: "organizer" | "admin"; initials: string }) {

@@ -10,7 +10,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed --workers=1"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
