@@ -13,7 +13,7 @@ export function UsersTable({ users: initial }: { users: AppUser[] }) {
   const q = search.trim().toLowerCase();
   const visible = users.filter((u) => !q || [u.name, u.email, u.campus ?? ""].some((v) => v.toLowerCase().includes(q)));
   const toggle = (id: string) =>
-    setUsers((list) => list.map((u) => (u.id === id ? { ...u, role: u.role === "admin" ? "organizer" : "admin" } : u)));
+    setUsers((list) => list.map((u) => (u.id === id ? { ...u, role: u.role === "iahv_admin" ? "organizer" : "iahv_admin" } : u)));
 
   return (
     <div className="flex flex-col gap-3">
@@ -46,7 +46,7 @@ export function UsersTable({ users: initial }: { users: AppUser[] }) {
                 <td className="px-2 py-3">{u.email}</td>
                 <td className="px-2 py-3 text-muted">{u.campus ?? "—"}</td>
                 <td className="px-2 py-3">
-                  <StatusPill tone={u.role === "admin" ? "info" : "ok"}>{u.role === "admin" ? "IAHV admin" : "Organizer"}</StatusPill>
+                  <StatusPill tone={u.role === "iahv_admin" ? "info" : "ok"}>{u.role === "iahv_admin" ? "IAHV admin" : "Organizer"}</StatusPill>
                 </td>
                 <td className="py-3 pr-4 pl-2 text-right">
                   <button
@@ -54,7 +54,7 @@ export function UsersTable({ users: initial }: { users: AppUser[] }) {
                     onClick={() => toggle(u.id)}
                     className="min-h-10 cursor-pointer rounded-[10px] border border-field px-3.5 font-semibold whitespace-nowrap text-brand-dark hover:bg-surface"
                   >
-                    {u.role === "admin" ? "Make organizer" : "Make admin"}
+                    {u.role === "iahv_admin" ? "Make organizer" : "Make admin"}
                   </button>
                 </td>
               </tr>

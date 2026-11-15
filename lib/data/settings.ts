@@ -19,7 +19,7 @@ export async function getPricing(): Promise<PricingConstants> {
 // TODO(backend): select from `profiles` (admins can read every profile under RLS).
 export async function getUsers(): Promise<AppUser[]> {
   return [
-    { id: "iahv-admin", name: adminUser.name, email: adminUser.email, role: "admin", campus: null },
+    { id: "iahv-admin", name: adminUser.name, email: adminUser.email, role: "iahv_admin", campus: null },
     ...organizers.map((o) => ({ id: o.id, name: o.name, email: o.email, role: "organizer" as const, campus: o.campus })),
   ];
 }

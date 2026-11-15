@@ -69,7 +69,7 @@ describe("getAdminCourseDetail", () => {
 describe("settings data", () => {
   it("lists one admin and every organizer", async () => {
     const users = await getUsers();
-    expect(users.filter((u) => u.role === "admin")).toHaveLength(1);
+    expect(users.filter((u) => u.role === "iahv_admin")).toHaveLength(1);
     expect(users.filter((u) => u.role === "organizer")).toHaveLength(7);
   });
 
