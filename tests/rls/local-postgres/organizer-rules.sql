@@ -204,6 +204,56 @@ select pg_temp.expect_fail('other organizer requests an invoice on Maya''s cours
   $$select public.request_invoice((select id from public.courses where name = 'Invoice course'), 'ffffffff-0000-0000-0000-000000000003', 14, false, current_date + 30, '{eeeeeeee-0000-0000-0000-000000000002}')$$);
 select pg_temp.act_as(:maya);
 
+-- ---- Funding request (A-5.1) ----------------------------------------------------------
+select pg_temp.act_as(:maya);
+select public.create_course('Funded course', 'happiness', 'in_person', '2027-06-04', '2027-06-06', null, null, 12, '{university}');
+insert into public.documents (id, course_id, kind, storage_path, file_name, size_bytes, uploaded_by)
+  select 'eeeeeeee-0000-0000-0000-000000000003', id, 'proof_of_funds', id || '/0123456789abcdef-award.pdf', 'award.pdf', 5000, :maya
+  from public.courses where name = 'Funded course';
+select public.save_funding_request((select id from public.courses where name = 'Funded course'), false, null, null, '{}');
+select pg_temp.expect_rows('a draft saves with nothing filled in and starts step 3',
+  $$select 1 from public.funding_requests f join public.courses c on c.id = f.course_id join public.course_steps s on s.course_id = c.id and s.step_no = 3
+    where c.name = 'Funded course' and f.status = 'draft' and s.status = 'in_progress'$$, 1);
+select pg_temp.expect_fail('submit without a Journey course ID',
+  $$select public.save_funding_request((select id from public.courses where name = 'Funded course'), true, 900, current_date + 10, '{eeeeeeee-0000-0000-0000-000000000003}')$$);
+update public.courses set journey_course_id = 'J-200001' where name = 'Funded course';
+select pg_temp.expect_fail('submit without proof of funds',
+  $$select public.save_funding_request((select id from public.courses where name = 'Funded course'), true, 900, current_date + 10, '{}')$$);
+select pg_temp.expect_fail('submit with another course''s file',
+  $$select public.save_funding_request((select id from public.courses where name = 'Funded course'), true, 900, current_date + 10, '{eeeeeeee-0000-0000-0000-000000000002}')$$);
+select pg_temp.expect_fail('submit with a past needed-by date',
+  $$select public.save_funding_request((select id from public.courses where name = 'Funded course'), true, 900, current_date - 1, '{eeeeeeee-0000-0000-0000-000000000003}')$$);
+select public.save_funding_request((select id from public.courses where name = 'Funded course'), true, 900, current_date + 10,
+  '{eeeeeeee-0000-0000-0000-000000000003}', 0, 'none', 'yes', 14);
+select pg_temp.expect_rows('submitted: proof attached, course updated, step 3 waiting',
+  $$select 1 from public.funding_requests f join public.courses c on c.id = f.course_id
+    join public.funding_request_documents d on d.funding_request_id = f.id
+    join public.course_steps s on s.course_id = c.id and s.step_no = 3
+    where c.name = 'Funded course' and f.status = 'submitted' and f.submitted_at is not null and f.total_funding = 900
+      and c.agreement_status = 'yes' and c.est_participants = 14 and c.funding_amount = 900 and s.status = 'waiting'$$, 1);
+select pg_temp.expect_fail('changing a request that is with IAHV',
+  $$select public.save_funding_request((select id from public.courses where name = 'Funded course'), true, 1, current_date + 10, '{eeeeeeee-0000-0000-0000-000000000003}')$$);
+select pg_temp.expect_fail('a students-pay course has no funding request',
+  $$select public.save_funding_request((select id from public.courses where name = 'Invoice course'), false, null, null, '{}')$$);
+-- IAHV asks for more information; the organizer can then change and resubmit.
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+update public.funding_requests set status = 'needs_info', review_note = 'Letter must show the amount'
+  where course_id = (select id from public.courses where name = 'Funded course');
+set role authenticated;
+select pg_temp.act_as(:maya);
+select public.save_funding_request((select id from public.courses where name = 'Funded course'), false, 950, current_date + 10, '{eeeeeeee-0000-0000-0000-000000000003}');
+select pg_temp.expect_rows('a draft save keeps needs_info and IAHV''s note',
+  $$select 1 from public.funding_requests f join public.courses c on c.id = f.course_id
+    where c.name = 'Funded course' and f.status = 'needs_info' and f.review_note is not null and f.total_funding = 950$$, 1);
+select public.save_funding_request((select id from public.courses where name = 'Funded course'), true, 950, current_date + 10, '{eeeeeeee-0000-0000-0000-000000000003}');
+select pg_temp.expect_rows('resubmitted after needs_info',
+  $$select 1 from public.funding_requests f join public.courses c on c.id = f.course_id where c.name = 'Funded course' and f.status = 'submitted'$$, 1);
+select pg_temp.act_as(:priya);
+select pg_temp.expect_fail('other organizer saves funding on Maya''s course',
+  $$select public.save_funding_request((select id from public.courses where name = 'Funded course'), false, 1, null, '{}')$$);
+select pg_temp.act_as(:maya);
+
 reset role;
 set role anon;
 select pg_temp.expect_fail('anonymous visitor creates a course',

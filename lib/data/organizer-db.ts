@@ -130,3 +130,38 @@ export async function getMyInvoice(courseId: string): Promise<MyInvoice | null> 
     ? { id: data.id, status: data.status, number: data.invoice_number, amount: data.amount, dueDate: data.due_date, requestedAt: data.requested_at }
     : null;
 }
+
+export type MyFundingRequest = {
+  status: "draft" | "submitted" | "approved" | "needs_info";
+  totalFunding: number | null;
+  studentFee: number;
+  neededBy: string | null; // yyyy-mm-dd
+  priorFundingNote: string | null;
+  reviewNote: string | null;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  documentIds: string[];
+};
+
+/** The step 3 funding request of my course, with raw values for the form. */
+export async function getMyFundingRequest(courseId: string): Promise<MyFundingRequest | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("funding_requests")
+    .select("status, total_funding, student_fee, needed_by, prior_funding_note, review_note, submitted_at, reviewed_at, funding_request_documents(document_id)")
+    .eq("course_id", courseId)
+    .maybeSingle();
+  if (error) throw new Error(`Could not load the funding request: ${error.message}`);
+  if (!data) return null;
+  return {
+    status: data.status,
+    totalFunding: data.total_funding,
+    studentFee: data.student_fee,
+    neededBy: data.needed_by,
+    priorFundingNote: data.prior_funding_note,
+    reviewNote: data.review_note,
+    submittedAt: data.submitted_at,
+    reviewedAt: data.reviewed_at,
+    documentIds: data.funding_request_documents.map((d) => d.document_id),
+  };
+}

@@ -1029,19 +1029,6 @@ export type Database = {
         }
       }
       owns_course: { Args: { p_course_id: string }; Returns: boolean }
-      request_invoice: {
-        Args: {
-          p_client_id: string
-          p_course_id: string
-          p_document_ids: string[]
-          p_due_date: string
-          p_notes?: string
-          p_participants: number
-          p_pay_by_card: boolean
-          p_po_number?: string
-        }
-        Returns: string
-      }
       request_funding_info: {
         Args: { p_note: string; p_request_id: string }
         Returns: {
@@ -1066,7 +1053,34 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      request_invoice: {
+        Args: {
+          p_client_id: string
+          p_course_id: string
+          p_document_ids: string[]
+          p_due_date: string
+          p_notes?: string
+          p_participants: number
+          p_pay_by_card: boolean
+          p_po_number?: string
+        }
+        Returns: string
+      }
       require_iahv_admin: { Args: never; Returns: undefined }
+      save_funding_request: {
+        Args: {
+          p_agreement?: Database["public"]["Enums"]["agreement_status"]
+          p_course_id: string
+          p_document_ids?: string[]
+          p_est_participants?: number
+          p_needed_by?: string
+          p_prior_funding_note?: string
+          p_student_fee?: number
+          p_submit: boolean
+          p_total_funding?: number
+        }
+        Returns: string
+      }
       set_user_role: {
         Args: {
           p_role: Database["public"]["Enums"]["user_role"]
