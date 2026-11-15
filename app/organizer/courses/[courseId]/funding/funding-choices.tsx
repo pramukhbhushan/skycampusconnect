@@ -67,7 +67,7 @@ export function AgreementChoice({ initial }: { initial: AgreementStatus }) {
 export function FundingFooter({ courseId }: { courseId: string }) {
   return (
     <div className="flex flex-wrap justify-between gap-3">
-      <ButtonLink href="/organizer/courses/new" variant="secondary" className="px-[22px]">← Back</ButtonLink>
+      <ButtonLink href={`/organizer/courses/${courseId}`} variant="secondary" className="px-[22px]">← All steps</ButtonLink>
       <div className="flex flex-wrap gap-3">
         <ButtonLink href="/organizer" variant="secondary" className="px-[22px]">Save draft</ButtonLink>
         <ButtonLink href={`/organizer/courses/${courseId}/invoice`}>Submit to IAHV</ButtonLink>

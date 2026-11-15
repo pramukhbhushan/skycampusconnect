@@ -130,7 +130,14 @@ export default async function OrganizerHome() {
                     <span className="text-[13px] font-semibold text-muted">
                       {course.type ? `${COURSE_TYPE_LABEL[course.type]} · ${course.format === "online" ? "Online" : "In person"}` : "Draft"}
                     </span>
-                    <h3 className="text-[19px] leading-[1.3] font-bold">{course.name}</h3>
+                    <h3 className="text-[19px] leading-[1.3] font-bold">
+                      <Link
+                        href={course.type ? `/organizer/courses/${course.id}` : `/organizer/courses/${course.id}/details`}
+                        className="text-ink no-underline hover:underline"
+                      >
+                        {course.name}
+                      </Link>
+                    </h3>
                   </div>
                   <StatusPill tone={card.tone} className="flex-none">{card.statusLabel}</StatusPill>
                 </div>
@@ -155,12 +162,19 @@ export default async function OrganizerHome() {
                   <span className="text-xs font-bold tracking-[0.06em] text-muted uppercase">Next</span>
                   <span className="text-[15px] leading-[1.45]">{card.next}</span>
                 </div>
-                <Link
-                  href={card.cta.href}
-                  className="mt-auto inline-flex min-h-11 items-center justify-center rounded-xl border border-field text-[15px] font-semibold text-brand-dark no-underline hover:bg-surface"
-                >
-                  {card.cta.label}
-                </Link>
+                <div className="mt-auto flex flex-col gap-2">
+                  <Link
+                    href={card.cta.href}
+                    className="inline-flex min-h-11 items-center justify-center rounded-xl border border-field text-[15px] font-semibold text-brand-dark no-underline hover:bg-surface"
+                  >
+                    {card.cta.label}
+                  </Link>
+                  {course.type && card.cta.href !== `/organizer/courses/${course.id}` && (
+                    <Link href={`/organizer/courses/${course.id}`} className="self-center text-sm font-semibold">
+                      See all 8 steps
+                    </Link>
+                  )}
+                </div>
               </article>
             );
           })}
