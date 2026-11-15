@@ -20,16 +20,32 @@ export type FeeBreakdown = {
   total: number;
 };
 
+/** Pricing inputs. Admins will edit these in Settings (B-5.3, `getPricing()`). */
+export type PricingConstants = {
+  basePrice: Record<CourseType, number>;
+  includedStudents: number;
+  extraStudentPrice: number;
+  cardFeeRate: number;
+};
+
+export const DEFAULT_PRICING: PricingConstants = {
+  basePrice: BASE_PRICE,
+  includedStudents: INCLUDED_STUDENTS,
+  extraStudentPrice: EXTRA_STUDENT_PRICE,
+  cardFeeRate: CARD_FEE_RATE,
+};
+
 export function computeFee(
   type: CourseType,
   participants: number,
   payByCard = false,
+  pricing: PricingConstants = DEFAULT_PRICING,
 ): FeeBreakdown {
-  const base = BASE_PRICE[type];
-  const extraStudents = Math.max(0, participants - INCLUDED_STUDENTS);
-  const extraAmount = extraStudents * EXTRA_STUDENT_PRICE;
+  const base = pricing.basePrice[type];
+  const extraStudents = Math.max(0, participants - pricing.includedStudents);
+  const extraAmount = extraStudents * pricing.extraStudentPrice;
   const subtotal = base + extraAmount;
-  const cardFee = payByCard ? Math.round(subtotal * CARD_FEE_RATE * 100) / 100 : 0;
+  const cardFee = payByCard ? Math.round(subtotal * pricing.cardFeeRate * 100) / 100 : 0;
   return { base, extraStudents, extraAmount, subtotal, cardFee, total: subtotal + cardFee };
 }
 

@@ -1,5 +1,5 @@
 import { AppHeader } from "@/components/app-header";
-import { getCurrentOrganizer } from "@/lib/mock-data";
+import { getCurrentOrganizer } from "@/lib/data/organizer";
 
 export default function OrganizerLayout({ children }: LayoutProps<"/organizer">) {
   const me = getCurrentOrganizer();

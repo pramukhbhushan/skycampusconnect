@@ -128,7 +128,7 @@ The design mockup (`*.html`) is kept locally and is gitignored.
 
 ### Wiring up the backend
 - `lib/types.ts` mirrors the Supabase schema in `plan-v3.md`.
-- Pages get data only through the functions at the bottom of `lib/mock-data.ts` (`getCourse`, `getOrganizerCourses`, `getAdminRows`, …). Replace their bodies with Supabase queries.
+- Pages get data only through the functions in `lib/data/` (`getCourse`, `getOrganizerCourses`, `getAdminRows`, …), which return sample data for now. Each file says which engineer owns it; replace the bodies with Supabase queries.
 - `lib/pricing.ts` and `lib/steps.ts` hold the pricing formula and step logic, ready to share with server code.
 - Search for `TODO(backend)` to find the forms that still need server actions (save course, submit funding, request invoice, send reminders, sign-in).
 

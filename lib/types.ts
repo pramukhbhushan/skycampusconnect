@@ -1,5 +1,5 @@
 // Domain types shared by the UI. They mirror the Supabase schema in plan-v3.md
-// so that swapping lib/mock-data.ts for real queries is a drop-in change.
+// so that swapping the sample data in lib/data/ for real queries is a drop-in change.
 
 export type Role = "organizer" | "admin";
 
@@ -125,3 +125,37 @@ export type SentReminder = {
   target: string;
   when: string;
 };
+
+// ---- Contracts fixed in Sprint 0 (sprint-planning.md 1.4) ------------------
+
+/** Forms that support "Save as template" (plan-v3 "Form templates"). */
+export type FormType = "course" | "funding_request" | "quote_request" | "invoice_request" | "reminder_email";
+
+export type FormTemplate = {
+  id: string;
+  ownerId: string;
+  formType: FormType;
+  name: string;
+  schemaVersion: number;
+  data: Record<string, unknown>;
+  updatedAt: string; // ISO timestamp
+};
+
+/** Audit-log event types written to `events` by every write. */
+export type EventType =
+  | "course.created"
+  | "course.updated"
+  | "step.updated"
+  | "funding.submitted"
+  | "funding.approved"
+  | "funding.needs_info"
+  | "quote.requested"
+  | "quote.issued"
+  | "invoice.requested"
+  | "invoice.issued"
+  | "invoice.sent"
+  | "invoice.paid"
+  | "invoice.closed"
+  | "accounting.submitted"
+  | "reminder.sent"
+  | "template.saved";

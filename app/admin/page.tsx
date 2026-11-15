@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getAdminRows } from "@/lib/mock-data";
+import { getAdminRows } from "@/lib/data/admin";
 import { formatRange } from "@/lib/dates";
 import { STEP_NAMES, currentStep } from "@/lib/steps";
 import { AdminCourses, type AdminRowView } from "./admin-courses";
