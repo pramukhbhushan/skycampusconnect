@@ -1,70 +1,58 @@
 "use client";
 
-import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { ArrowRight, CheckCircle } from "@/components/icons";
-import { OptionCard } from "@/components/ui";
-import type { Role } from "@/lib/types";
+import { safeNextPath } from "@/lib/auth/safe-next";
+import { createClient } from "@/lib/supabase/browser";
 
-const ROLES: { id: Role; label: string; desc: string }[] = [
-  { id: "organizer", label: "Organizer", desc: "Plan and run courses on my campus" },
-  { id: "iahv_admin", label: "IAHV Admin", desc: "Finance & SKY Campus team: all courses" },
-];
-
-// TODO(backend): replace the link with a Supabase magic-link sign-in that
-// restricts organizers to campus domains and admins to invited IAHV emails.
 export function LoginForm() {
-  const [role, setRole] = useState<Role>("organizer");
-  const isAdmin = role === "iahv_admin";
+  const searchParams = useSearchParams();
+  const [pending, setPending] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const showError = failed || searchParams.get("error") === "auth";
+
+  async function signInWithGoogle() {
+    setPending(true);
+    setFailed(false);
+    const callback = new URL("/auth/callback", window.location.origin);
+    const next = safeNextPath(searchParams.get("next"));
+    if (next) callback.searchParams.set("next", next);
+
+    const { error } = await createClient().auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: callback.toString() },
+    });
+    if (error) {
+      setFailed(true);
+      setPending(false);
+    }
+  }
 
   return (
-    <form className="flex w-full max-w-[440px] flex-col gap-[26px]">
+    <div className="flex w-full max-w-[440px] flex-col gap-[26px]">
       <div className="flex flex-col gap-2">
         <h2 className="text-3xl font-bold">Log in</h2>
-        <p className="text-base text-muted">Choose your view, then we&apos;ll email you a sign-in link.</p>
+        <p className="text-base text-muted">Sign in with your Google account to continue.</p>
       </div>
 
-      <fieldset className="flex flex-col gap-2.5">
-        <legend className="mb-2.5 text-sm font-semibold">I&apos;m logging in as</legend>
-        <div className="grid grid-cols-2 gap-3">
-          {ROLES.map((r) => {
-            const on = r.id === role;
-            return (
-              <OptionCard key={r.id} selected={on} onClick={() => setRole(r.id)} className="min-h-28 gap-2">
-                <span className="flex items-center justify-between gap-2">
-                  <span className="text-base font-bold">{r.label}</span>
-                  {on && <CheckCircle size={20} strokeWidth={2.4} className="text-brand" />}
-                </span>
-                <span className="text-sm leading-[1.45] text-muted">{r.desc}</span>
-              </OptionCard>
-            );
-          })}
-        </div>
-      </fieldset>
+      {showError && (
+        <p role="alert" className="rounded-xl border border-field bg-white p-4 text-sm text-ink">
+          Sign-in didn&apos;t complete. Please try again.
+        </p>
+      )}
 
-      <div className="flex flex-col gap-2">
-        <label htmlFor="login-email" className="text-sm font-semibold">
-          {isAdmin ? "IAHV email" : "Campus email"}
-        </label>
-        <input
-          id="login-email"
-          type="email"
-          placeholder={isAdmin ? "name@iahv.org" : "you@umd.edu"}
-          className="min-h-[50px] rounded-xl border border-field bg-white px-4 text-base text-ink"
-        />
-      </div>
-
-      <Link
-        href={isAdmin ? "/admin" : "/organizer"}
-        className="flex min-h-[52px] items-center justify-center gap-2.5 rounded-xl bg-brand text-base font-semibold text-white no-underline hover:text-white"
+      <button
+        type="button"
+        onClick={signInWithGoogle}
+        disabled={pending}
+        className="flex min-h-[52px] items-center justify-center gap-2.5 rounded-xl bg-brand text-base font-semibold text-white hover:opacity-90 disabled:opacity-60"
       >
-        {isAdmin ? "Continue to admin dashboard" : "Continue to my courses"}
-        <ArrowRight />
-      </Link>
+        {pending ? "Redirecting to Google…" : "Continue with Google"}
+      </button>
 
       <p className="text-sm leading-normal text-muted">
-        New organizer? Use your campus email and we&apos;ll set up your profile. Admin access is granted by the IAHV team.
+        New organizer? Sign in with Google and we&apos;ll set up your profile. Admin access is granted by the IAHV team.
       </p>
-    </form>
+    </div>
   );
 }

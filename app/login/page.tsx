@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { Logo } from "@/components/ui";
 import { LoginForm } from "./login-form";
 
@@ -25,7 +26,9 @@ export default function LoginPage() {
       </div>
 
       <div className="flex min-w-0 flex-[1_1_520px] items-center justify-center bg-white px-8 py-14">
-        <LoginForm />
+        <Suspense>
+          <LoginForm />
+        </Suspense>
       </div>
     </div>
   );
