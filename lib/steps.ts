@@ -28,6 +28,7 @@ export const STEP_STATUS_LABEL: Record<StepStatus, string> = {
   in_progress: "In progress",
   waiting: "Waiting on IAHV",
   todo: "To do",
+  locked: "Locked",
   skipped: "Skipped",
 };
 
@@ -37,6 +38,7 @@ export const SEGMENT_CLASS: Record<StepStatus, string> = {
   in_progress: "bg-brand-light",
   waiting: "bg-amber",
   todo: "bg-line-2",
+  locked: "bg-line-2",
   skipped: "bg-white border border-dashed border-skip",
 };
 

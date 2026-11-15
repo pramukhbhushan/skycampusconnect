@@ -1,15 +1,17 @@
 // Domain types shared by the UI. They mirror the Supabase schema in plan-v3.md
 // so that swapping the sample data in lib/data/ for real queries is a drop-in change.
 
-export type Role = "organizer" | "admin";
+/** Matches the Postgres enum `user_role`. */
+export type Role = "organizer" | "iahv_admin";
 
 export type CourseType = "happiness" | "premium";
 export type CourseFormat = "in_person" | "online";
 export type Funder = "students" | "university" | "sponsor" | "donor";
 export type AgreementStatus = "yes" | "in_progress" | "no";
 
-/** Status of one of the 8 course steps. */
+/** Status of one of the 8 course steps. Matches the Postgres enum `step_status`. */
 export type StepStatus =
+  | "locked" // not available yet (an earlier step must finish first)
   | "done"
   | "in_progress"
   | "waiting" // waiting on IAHV, or an organizer action is due
