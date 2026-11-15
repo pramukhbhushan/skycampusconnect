@@ -810,6 +810,25 @@ export type Database = {
     }
     Functions: {
       can_access_course: { Args: { p_course_id: string }; Returns: boolean }
+      create_course: {
+        Args: {
+          p_campus_id?: string
+          p_course_type?: Database["public"]["Enums"]["course_type"]
+          p_end_date?: string
+          p_est_participants?: number
+          p_format?: Database["public"]["Enums"]["course_format"]
+          p_funding_sources?: Database["public"]["Enums"]["funder"][]
+          p_name: string
+          p_start_date?: string
+          p_step1_data?: Json
+          p_teachers?: string
+        }
+        Returns: string
+      }
+      funding_step_status: {
+        Args: { p_sources: Database["public"]["Enums"]["funder"][] }
+        Returns: Database["public"]["Enums"]["step_status"]
+      }
       is_iahv_admin: { Args: never; Returns: boolean }
       owns_course: { Args: { p_course_id: string }; Returns: boolean }
       storage_course_id: { Args: { p_name: string }; Returns: string }
