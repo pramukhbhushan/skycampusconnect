@@ -5,13 +5,15 @@
 // Needs the e2e Supabase project with Email sign-in on and "Confirm email" off, and the
 // test server started with GUEST_LOGIN=true (playwright.config.ts does both). See ProfileTests.md.
 import { expect, test as setup } from "@playwright/test";
-import { KELSI, PERSONAS, authFile, password, type Persona } from "./support/personas";
-import { makeAdmin, wipeTestPeople } from "./support/supabase-admin";
+import { KELSI, ORGANIZERS, PERSONAS, authFile, password, type Persona } from "./support/personas";
+import { ensureCampuses, makeAdmin, wipeTestPeople } from "./support/supabase-admin";
 
 setup.describe.configure({ mode: "serial" });
 
 setup("start clean: remove last run's test people and courses", async () => {
   await wipeTestPeople();
+  // IAHV's campus list: the three test campuses with their countries (Toronto is CA).
+  await ensureCampuses(ORGANIZERS.map((o) => ({ name: o.campus!, country: o.country! })));
 });
 
 async function createAccount(page: import("@playwright/test").Page, p: Persona) {

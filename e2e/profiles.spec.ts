@@ -118,13 +118,12 @@ test.describe("Kelsi on the IAHV dashboard", () => {
     }
   });
 
-  test("A2b Country = Canada shows the Toronto course", async ({ browser }) => {
-    // Known gap (Engineer A): step 1 never sets courses.country, so every new course is saved
-    // as US. Remove this line once createCourse sets the country from the campus.
-    test.fail(true, "createCourse doesn't set the country yet; Toronto is saved as US");
+  test("A2b Country = Canada shows only the Toronto course", async ({ browser }) => {
+    // The course's country comes from its campus (University of Toronto is CA).
     const page = await as(browser, KELSI.id);
     await page.goto("/admin?q=E2E&country=CA");
     await expect(courseRow(page, byId("org-toronto").course!.name)).toBeVisible();
+    await expect(courseRow(page, byId("org-umd").course!.name)).toHaveCount(0);
   });
 
   test("A3 the UMD course detail shows its organizer, campus and steps", async ({ browser }) => {
