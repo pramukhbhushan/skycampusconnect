@@ -133,3 +133,34 @@ describe("saveInvoiceForm", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 });
+
+import { journeyAccountingText } from "@/lib/organizer/invoice";
+import { submitAccounting, submitAccountingForm } from "@/app/organizer/courses/invoice-actions";
+
+describe("journeyAccountingText", () => {
+  it("names who it's billed to and the due date, or who paid and when", () => {
+    const inv = { number: "INV-24817", amount: 1400, clientName: "University of Maryland, College Park", dueDate: "2026-12-08", paidAt: null };
+    expect(journeyAccountingText(inv)).toBe("Invoice # INV-24817 for $1,400.00 billed to University of Maryland, College Park, due 12/08/2026.");
+    expect(journeyAccountingText({ ...inv, paidAt: "2026-12-01T15:00:00Z" })).toBe(
+      "Invoice # INV-24817 for $1,400.00 paid by University of Maryland, College Park on 12/01/2026.",
+    );
+    expect(journeyAccountingText({ number: "INV-1", amount: null, clientName: null, dueDate: null, paidAt: null })).toBe("Invoice # INV-1.");
+  });
+});
+
+describe("submitAccounting", () => {
+  it("submits through the database and logs it", async () => {
+    rpc.mockResolvedValue({ data: "inv-1", error: null });
+    await submitAccounting("c1");
+    expect(rpc).toHaveBeenCalledWith("submit_accounting", { p_course_id: "c1" });
+    expect(logEvent).toHaveBeenCalledWith("c1", "accounting.submitted", { invoiceId: "inv-1" });
+  });
+
+  it("shows the database's reason when it can't submit yet", async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: "Record attendance (step 6) first" } });
+    const fd = new FormData();
+    fd.set("courseId", "c1");
+    expect(await submitAccountingForm({}, fd)).toEqual({ error: "Record attendance (step 6) first" });
+    expect(logEvent).not.toHaveBeenCalled();
+  });
+});

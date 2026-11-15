@@ -214,9 +214,6 @@ select public.save_funding_request((select id from public.courses where name = '
 select pg_temp.expect_rows('a draft saves with nothing filled in and starts step 3',
   $$select 1 from public.funding_requests f join public.courses c on c.id = f.course_id join public.course_steps s on s.course_id = c.id and s.step_no = 3
     where c.name = 'Funded course' and f.status = 'draft' and s.status = 'in_progress'$$, 1);
-select pg_temp.expect_fail('submit without a Journey course ID',
-  $$select public.save_funding_request((select id from public.courses where name = 'Funded course'), true, 900, current_date + 10, '{eeeeeeee-0000-0000-0000-000000000003}')$$);
-update public.courses set journey_course_id = 'J-200001' where name = 'Funded course';
 select pg_temp.expect_fail('submit without proof of funds',
   $$select public.save_funding_request((select id from public.courses where name = 'Funded course'), true, 900, current_date + 10, '{}')$$);
 select pg_temp.expect_fail('submit with another course''s file',
@@ -254,6 +251,61 @@ select pg_temp.expect_fail('other organizer saves funding on Maya''s course',
   $$select public.save_funding_request((select id from public.courses where name = 'Funded course'), false, 1, null, '{}')$$);
 select pg_temp.act_as(:maya);
 
+-- ---- Journey ID, step progress and course accounting (A-3.2) --------------------------
+select pg_temp.act_as(:maya);
+select public.create_course('No Journey yet', 'happiness', 'in_person', '2027-07-02', '2027-07-04', null, null, 12, '{donor}');
+insert into public.documents (id, course_id, kind, storage_path, file_name, size_bytes, uploaded_by)
+  select 'eeeeeeee-0000-0000-0000-000000000004', id, 'proof_of_funds', id || '/0123456789abcdef-pledge.pdf', 'pledge.pdf', 5000, :maya
+  from public.courses where name = 'No Journey yet';
+select public.save_funding_request((select id from public.courses where name = 'No Journey yet'), true, 500, current_date + 10, '{eeeeeeee-0000-0000-0000-000000000004}');
+select pg_temp.expect_rows('funding can be submitted before the Journey ID (plan-v3)',
+  $$select 1 from public.funding_requests f join public.courses c on c.id = f.course_id where c.name = 'No Journey yet' and f.status = 'submitted'$$, 1);
+-- IAHV acts (trusted SQL stands in for B's admin functions).
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+update public.funding_requests set status = 'needs_info', review_note = 'x'
+  where course_id = (select id from public.courses where name = 'No Journey yet');
+select pg_temp.expect_rows('needs_info puts step 3 back to in progress',
+  $$select 1 from public.course_steps s join public.courses c on c.id = s.course_id where c.name = 'No Journey yet' and s.step_no = 3 and s.status = 'in_progress'$$, 1);
+update public.funding_requests set status = 'approved'
+  where course_id = (select id from public.courses where name = 'No Journey yet');
+select pg_temp.expect_rows('approval marks step 3 done',
+  $$select 1 from public.course_steps s join public.courses c on c.id = s.course_id where c.name = 'No Journey yet' and s.step_no = 3 and s.status = 'done'$$, 1);
+update public.invoices set status = 'issued', invoice_number = 'INV-90001', issued_at = now()
+  where course_id = (select id from public.courses where name = 'Invoice course');
+select pg_temp.expect_rows('issuing the invoice # marks step 4 done',
+  $$select 1 from public.course_steps s join public.courses c on c.id = s.course_id where c.name = 'Invoice course' and s.step_no = 4 and s.status = 'done'$$, 1);
+set role authenticated;
+select pg_temp.act_as(:maya);
+select pg_temp.expect_fail('accounting before attendance is recorded',
+  $$select public.submit_accounting((select id from public.courses where name = 'Invoice course'))$$);
+update public.course_steps set status = 'done'
+  where step_no = 6 and course_id = (select id from public.courses where name = 'Invoice course');
+update public.course_steps set status = 'done'
+  where step_no = 6 and course_id = (select id from public.courses where name = 'Students pay');
+select pg_temp.expect_fail('accounting without an invoice #',
+  $$select public.submit_accounting((select id from public.courses where name = 'Students pay'))$$);
+select public.submit_accounting((select id from public.courses where name = 'Invoice course'));
+select pg_temp.expect_rows('accounting submitted: invoice status, step 7 done, step 8 waiting',
+  $$select 1 from public.invoices i join public.courses c on c.id = i.course_id
+    join public.course_steps s7 on s7.course_id = c.id and s7.step_no = 7
+    join public.course_steps s8 on s8.course_id = c.id and s8.step_no = 8
+    where c.name = 'Invoice course' and i.status = 'accounting_submitted' and i.accounting_submitted_at is not null
+      and s7.status = 'done' and s8.status = 'waiting'$$, 1);
+select pg_temp.expect_fail('submitting accounting twice',
+  $$select public.submit_accounting((select id from public.courses where name = 'Invoice course'))$$);
+select pg_temp.act_as(:priya);
+select pg_temp.expect_fail('other organizer submits Maya''s accounting',
+  $$select public.submit_accounting((select id from public.courses where name = 'Invoice course'))$$);
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+update public.invoices set status = 'paid', paid_at = now() where course_id = (select id from public.courses where name = 'Invoice course');
+update public.invoices set status = 'closed', closed_at = now() where course_id = (select id from public.courses where name = 'Invoice course');
+select pg_temp.expect_rows('closing the invoice marks step 8 done',
+  $$select 1 from public.course_steps s join public.courses c on c.id = s.course_id where c.name = 'Invoice course' and s.step_no = 8 and s.status = 'done'$$, 1);
+set role authenticated;
+select pg_temp.act_as(:maya);
+
 reset role;
 set role anon;
 select pg_temp.expect_fail('anonymous visitor creates a course',
@@ -267,6 +319,8 @@ set role anon;
 select pg_temp.expect_fail('anonymous visitor reads funding', 'select * from public.funding_requests');
 select pg_temp.expect_fail('anonymous visitor reads templates', 'select * from public.form_templates');
 select pg_temp.expect_fail('anonymous visitor reads clients', 'select * from public.clients');
+select pg_temp.expect_fail('anonymous visitor submits accounting',
+  $$select public.submit_accounting(gen_random_uuid())$$);
 select pg_temp.expect_fail('anonymous visitor requests an invoice',
   $$select public.request_invoice(gen_random_uuid(), gen_random_uuid(), 1, false, current_date, '{}')$$);
 reset role;

@@ -4,10 +4,11 @@ import { CheckCircle, Clock } from "@/components/icons";
 import { ButtonLink, Callout, Card, Eyebrow, SideCard } from "@/components/ui";
 import { formatDate } from "@/lib/dates";
 import { getLivePricing, getMyInvoice, listMyCourseDocuments, type MyInvoice } from "@/lib/data/organizer-db";
-import { INVOICE_STATUS_LABEL } from "@/lib/organizer/invoice";
+import { INVOICE_STATUS_LABEL, journeyAccountingText } from "@/lib/organizer/invoice";
 import { money } from "@/lib/pricing";
 import type { StepStatus } from "@/lib/types";
 import { courseSubtitle, loadCourse } from "../course-data";
+import { AccountingCard } from "./accounting-card";
 import { InvoiceForm } from "./invoice-form";
 
 export const metadata: Metadata = { title: "Invoice request" };
@@ -27,7 +28,7 @@ export default async function InvoicePage({ params }: PageProps<"/organizer/cour
     <>
       <CourseHeader title={course.name} subtitle={courseSubtitle(course)} steps={steps} />
       {invoice ? (
-        <InvoiceStatus courseId={course.id} invoice={invoice} />
+        <InvoiceStatus courseId={course.id} invoice={invoice} attendanceDone={course.steps[5] === "done"} />
       ) : (
         <InvoiceForm
           courseId={course.id}
@@ -47,8 +48,10 @@ export default async function InvoicePage({ params }: PageProps<"/organizer/cour
 }
 
 /** What the organizer sees once the invoice has been requested. */
-function InvoiceStatus({ courseId, invoice }: { courseId: string; invoice: MyInvoice }) {
+function InvoiceStatus({ courseId, invoice, attendanceDone }: { courseId: string; invoice: MyInvoice; attendanceDone: boolean }) {
   const waiting = invoice.status === "requested";
+  const numbered = invoice.number !== null && (invoice.status === "issued" || invoice.status === "sent_to_client");
+  const afterAccounting = invoice.status === "accounting_submitted" || invoice.status === "paid" || invoice.status === "closed";
   return (
     <StepLayout
       aside={
@@ -90,6 +93,31 @@ function InvoiceStatus({ courseId, invoice }: { courseId: string; invoice: MyInv
           ))}
         </dl>
       </Card>
+      {invoice.number && (numbered || afterAccounting) && (
+        <AccountingCard
+          courseId={courseId}
+          text={journeyAccountingText({ ...invoice, number: invoice.number })}
+          canSubmit={numbered && attendanceDone}
+          blocker={
+            afterAccounting
+              ? `Submitted in Journey${invoice.accountingSubmittedAt ? ` on ${formatDate(invoice.accountingSubmittedAt.slice(0, 10))}` : ""}.`
+              : "After the course, record attendance (Step 6), then come back to submit course accounting."
+          }
+        />
+      )}
+      {afterAccounting && (
+        <Card>
+          <Eyebrow>Step 8 of 8</Eyebrow>
+          <h2 className="text-2xl font-bold">Payment &amp; closure</h2>
+          <p className="text-[15px] text-ink-soft">
+            {invoice.status === "closed"
+              ? "Paid and closed. This course is complete."
+              : invoice.status === "paid"
+                ? `Paid${invoice.paidAt ? ` on ${formatDate(invoice.paidAt.slice(0, 10))}` : ""}. IAHV will close the course on Journey.`
+                : `Waiting for the university's payment${invoice.dueDate ? ` (due ${formatDate(invoice.dueDate)})` : ""}. IAHV marks it paid when it arrives.`}
+          </p>
+        </Card>
+      )}
       <div className="flex flex-wrap justify-between gap-3">
         <ButtonLink href={`/organizer/courses/${courseId}`} variant="secondary" className="px-[22px]">← All steps</ButtonLink>
       </div>

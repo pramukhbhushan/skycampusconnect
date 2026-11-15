@@ -72,8 +72,8 @@ export default async function FundingPage({ params }: PageProps<"/organizer/cour
             </Callout>
           )}
           {!locked && !course.journeyCourseId && (
-            <Callout tone="warn" icon={<Warning size={22} />} title="Add your Journey course ID first">
-              <span>IAHV needs it to set the student fee, so you can save a draft but not submit yet.</span>
+            <Callout tone="warn" icon={<Warning size={22} />} title="Add your Journey course ID">
+              <span>You can submit now, but IAHV can only approve once the course is posted on Journey with its ID.</span>
               <Link href={`/organizer/courses/${course.id}#step-2`} className="font-semibold">
                 Add it in Step 2
               </Link>
