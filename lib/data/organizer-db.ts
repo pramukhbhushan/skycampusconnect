@@ -6,6 +6,7 @@
 // courses. These read cookies: call them from code that sits behind <Suspense>.
 
 import { cache } from "react";
+import { DEFAULT_PRICING, type PricingConstants } from "@/lib/pricing";
 import type { Course, UploadedDocument } from "@/lib/types";
 import { requireRole, type CurrentUser } from "@/lib/supabase/require-role";
 import { createClient } from "@/lib/supabase/server";
@@ -84,4 +85,48 @@ export async function listMyCourseDocuments(
   const { data, error } = await query.order("created_at", { ascending: true });
   if (error) throw new Error(`Could not load the files: ${error.message}`);
   return data.map((d) => ({ id: d.id, name: d.file_name, size: formatFileSize(d.size_bytes), uploadedOn: formatMonthDay(d.created_at) }));
+}
+
+/**
+ * Pricing from the admin-editable `settings` row (what request_invoice() charges), falling
+ * back to the defaults in lib/pricing.ts if the row is missing or malformed.
+ */
+export async function getLivePricing(): Promise<PricingConstants> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("settings").select("value").eq("key", "pricing").maybeSingle();
+  const v = data?.value as Partial<PricingConstants> | null | undefined;
+  const ok =
+    v &&
+    typeof v.basePrice?.happiness === "number" &&
+    typeof v.basePrice?.premium === "number" &&
+    typeof v.includedStudents === "number" &&
+    typeof v.extraStudentPrice === "number" &&
+    typeof v.cardFeeRate === "number";
+  return ok ? (v as PricingConstants) : DEFAULT_PRICING;
+}
+
+export type MyInvoice = {
+  id: string;
+  status: "requested" | "issued" | "sent_to_client" | "accounting_submitted" | "paid" | "closed" | "rejected";
+  number: string | null;
+  amount: number | null;
+  dueDate: string | null;
+  requestedAt: string;
+};
+
+/** The current (not rejected) invoice of my course, if one was requested. */
+export async function getMyInvoice(courseId: string): Promise<MyInvoice | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("invoices")
+    .select("id, status, invoice_number, amount, due_date, requested_at")
+    .eq("course_id", courseId)
+    .neq("status", "rejected")
+    .order("requested_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`Could not load the invoice: ${error.message}`);
+  return data
+    ? { id: data.id, status: data.status, number: data.invoice_number, amount: data.amount, dueDate: data.due_date, requestedAt: data.requested_at }
+    : null;
 }

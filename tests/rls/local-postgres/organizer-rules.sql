@@ -11,7 +11,8 @@ begin
   raise exception 'FAIL (should have been blocked): %', label;
 exception
   -- Only real access/constraint errors count as "blocked"; a typo in a check must not pass.
-  when insufficient_privilege or check_violation or unique_violation or not_null_violation or foreign_key_violation then
+  when insufficient_privilege or check_violation or unique_violation or not_null_violation or foreign_key_violation
+    or invalid_parameter_value or no_data_found then
     raise notice 'ok   blocked: % (%)', label, sqlerrm;
 end $$;
 create function pg_temp.expect_rows(label text, q text, n int) returns void language plpgsql as $$
@@ -171,6 +172,38 @@ select pg_temp.act_as(:maya);
 select pg_temp.expect_rows('organizer sees the client billed on her course',
   $$select 1 from public.clients where id = 'ffffffff-0000-0000-0000-000000000004'$$, 1);
 
+-- ---- Requesting an invoice (A-3.1) ---------------------------------------------------
+select pg_temp.act_as(:maya);
+select pg_temp.expect_rows('fee: 14 happiness students = 500 + 4 x 100',
+  $$select 1 from public.course_fee('happiness', 14, false) where total = 900 and extra_students = 4$$, 1);
+select pg_temp.expect_rows('fee: card adds 3%, premium base 1000',
+  $$select 1 from public.course_fee('premium', 10, true) where subtotal = 1000 and card_fee = 30 and total = 1030$$, 1);
+select public.create_course('Invoice course', 'happiness', 'in_person', '2027-05-07', '2027-05-09', null, null, 14, '{students}');
+insert into public.documents (id, course_id, kind, storage_path, file_name, size_bytes, uploaded_by)
+  select 'eeeeeeee-0000-0000-0000-000000000002', id, 'agreement', id || '/0123456789abcdef-agreement.pdf', 'agreement.pdf', 5000, :maya
+  from public.courses where name = 'Invoice course';
+select pg_temp.expect_fail('invoice needs an agreement PDF',
+  $$select public.request_invoice((select id from public.courses where name = 'Invoice course'), 'ffffffff-0000-0000-0000-000000000002', 14, false, current_date + 30, '{}')$$);
+select pg_temp.expect_fail('invoice cannot attach another course''s file',
+  $$select public.request_invoice((select id from public.courses where name = 'Invoice course'), 'ffffffff-0000-0000-0000-000000000002', 14, false, current_date + 30, '{eeeeeeee-0000-0000-0000-000000000001}')$$);
+select pg_temp.expect_fail('invoice due date in the past',
+  $$select public.request_invoice((select id from public.courses where name = 'Invoice course'), 'ffffffff-0000-0000-0000-000000000002', 14, false, current_date - 1, '{eeeeeeee-0000-0000-0000-000000000002}')$$);
+select public.request_invoice((select id from public.courses where name = 'Invoice course'), 'ffffffff-0000-0000-0000-000000000002', 14, true, current_date + 30, '{eeeeeeee-0000-0000-0000-000000000002}', 'PO-1', 'Thanks');
+select pg_temp.expect_rows('invoice requested with the server-computed amount',
+  $$select 1 from public.invoices i join public.courses c on c.id = i.course_id
+    where c.name = 'Invoice course' and i.status = 'requested' and i.amount = 927 and i.base_amount = 900 and i.cc_fee_applied and i.invoice_number is null$$, 1);
+select pg_temp.expect_rows('agreement attached and client linked',
+  $$select 1 from public.invoice_documents d join public.invoices i on i.id = d.invoice_id join public.courses c on c.id = i.course_id
+    where c.name = 'Invoice course' and c.client_id = 'ffffffff-0000-0000-0000-000000000002'$$, 1);
+select pg_temp.expect_rows('step 4 now waits on IAHV',
+  $$select 1 from public.course_steps s join public.courses c on c.id = s.course_id where c.name = 'Invoice course' and s.step_no = 4 and s.status = 'waiting'$$, 1);
+select pg_temp.expect_fail('a second invoice request for the same course',
+  $$select public.request_invoice((select id from public.courses where name = 'Invoice course'), 'ffffffff-0000-0000-0000-000000000002', 14, false, current_date + 30, '{eeeeeeee-0000-0000-0000-000000000002}')$$);
+select pg_temp.act_as(:priya);
+select pg_temp.expect_fail('other organizer requests an invoice on Maya''s course',
+  $$select public.request_invoice((select id from public.courses where name = 'Invoice course'), 'ffffffff-0000-0000-0000-000000000003', 14, false, current_date + 30, '{eeeeeeee-0000-0000-0000-000000000002}')$$);
+select pg_temp.act_as(:maya);
+
 reset role;
 set role anon;
 select pg_temp.expect_fail('anonymous visitor creates a course',
@@ -184,6 +217,8 @@ set role anon;
 select pg_temp.expect_fail('anonymous visitor reads funding', 'select * from public.funding_requests');
 select pg_temp.expect_fail('anonymous visitor reads templates', 'select * from public.form_templates');
 select pg_temp.expect_fail('anonymous visitor reads clients', 'select * from public.clients');
+select pg_temp.expect_fail('anonymous visitor requests an invoice',
+  $$select public.request_invoice(gen_random_uuid(), gen_random_uuid(), 1, false, current_date, '{}')$$);
 reset role;
 
 \echo ALL ORGANIZER RULE CHECKS PASSED

@@ -867,6 +867,21 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      course_fee: {
+        Args: {
+          p_participants: number
+          p_pay_by_card: boolean
+          p_type: Database["public"]["Enums"]["course_type"]
+        }
+        Returns: {
+          base_amount: number
+          card_fee: number
+          extra_amount: number
+          extra_students: number
+          subtotal: number
+          total: number
+        }[]
+      }
       create_course: {
         Args: {
           p_campus_id?: string
@@ -1014,6 +1029,19 @@ export type Database = {
         }
       }
       owns_course: { Args: { p_course_id: string }; Returns: boolean }
+      request_invoice: {
+        Args: {
+          p_client_id: string
+          p_course_id: string
+          p_document_ids: string[]
+          p_due_date: string
+          p_notes?: string
+          p_participants: number
+          p_pay_by_card: boolean
+          p_po_number?: string
+        }
+        Returns: string
+      }
       request_funding_info: {
         Args: { p_note: string; p_request_id: string }
         Returns: {
