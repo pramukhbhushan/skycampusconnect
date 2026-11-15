@@ -84,3 +84,22 @@ export async function sendRemindersAction(_: SendState, form: FormData): Promise
     message: `Sent to ${n} organizer${n === 1 ? "" : "s"}${mode === "dev" ? " (dev mode: written to the server log, not emailed)" : ""}.`,
   };
 }
+
+/**
+ * The admin opened a reminder in their own mail app (mailto:). We can't see whether they
+ * press Send there, so this records that the email was drafted, for the course's activity
+ * log and "Recently sent".
+ */
+export async function recordMailAppReminder(courseId: string, templateKey: string, course: string): Promise<void> {
+  const me = await getAdminMe();
+  const templateName = (await getEmailTemplates()).find((t) => t.key === templateKey)?.name ?? "Reminder";
+  logActivity(courseId, me.name, `Opened reminder in mail app: ${templateName}`);
+  adminStore.sent.unshift({
+    id: `mail-${Date.now()}`,
+    title: `${templateName} (mail app)`,
+    target: course,
+    when: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    sentBy: me.name,
+  });
+  revalidatePath("/admin", "layout");
+}

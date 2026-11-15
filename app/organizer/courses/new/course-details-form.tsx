@@ -174,7 +174,8 @@ export function CourseDetailsForm({
                 label="Estimated participants"
                 aria-invalid={!!errors.estParticipants}
                 inputMode="numeric"
-                value={participants}
+                // Empty until typed: a 0 would be submitted and block "Save draft" (a draft only needs a name).
+                value={participants || ""}
                 onChange={(e) => setParticipants(Math.max(0, Number(e.target.value.replace(/\D/g, "")) || 0))}
               />
             </div>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Logo } from "@/components/ui";
 import { LoginForm } from "./login-form";
+import { PasswordForm } from "./password-form";
 
 export const metadata: Metadata = { title: "Log in" };
 
@@ -27,7 +28,11 @@ export default function LoginPage() {
 
       <div className="flex min-w-0 flex-[1_1_520px] items-center justify-center bg-white px-8 py-14">
         <Suspense>
-          <LoginForm />
+          <div className="flex w-full max-w-[440px] flex-col gap-8">
+            <LoginForm />
+            {/* Test accounts only: set GUEST_LOGIN=true locally or in the e2e server. */}
+            {process.env.GUEST_LOGIN === "true" && <PasswordForm />}
+          </div>
         </Suspense>
       </div>
     </div>

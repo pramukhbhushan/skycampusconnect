@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { requireRole, logEvent, rpc } = vi.hoisted(() => ({ requireRole: vi.fn(), logEvent: vi.fn(), rpc: vi.fn() }));
 const calls: { table: string; op: string; payload?: unknown }[] = [];
 let updateResult: { data: unknown; error: unknown } = { data: [{ id: "c1" }], error: null };
+let campusRow: { id: string; country: string } = { id: "campus-1", country: "US" };
 
 function table(name: string) {
   const chain = {
@@ -10,7 +11,7 @@ function table(name: string) {
     ilike: () => chain,
     limit: () => chain,
     eq: () => chain,
-    maybeSingle: async () => ({ data: name === "campuses" ? { id: "campus-1" } : null, error: null }),
+    maybeSingle: async () => ({ data: name === "campuses" ? campusRow : null, error: null }),
     single: async () => ({ data: { id: "campus-new" }, error: null }),
     insert: (payload: unknown) => (calls.push({ table: name, op: "insert", payload }), chain),
     update: (payload: unknown) => {
@@ -54,6 +55,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   calls.length = 0;
   updateResult = { data: [{ id: "c1" }], error: null };
+  campusRow = { id: "campus-1", country: "US" };
   requireRole.mockResolvedValue({ id: "u1", email: "m@x.edu", name: "Maya", role: "organizer" });
   rpc.mockResolvedValue({ data: "new-id", error: null });
 });
@@ -69,6 +71,16 @@ describe("createCourse", () => {
     // students only + requirements 1 and 2 ticked -> step 1 done
     expect(calls).toContainEqual(expect.objectContaining({ table: "course_steps", op: "update", payload: expect.objectContaining({ status: "done" }) }));
     expect(logEvent).toHaveBeenCalledWith("new-id", "course.created", { name: "UMD Spring Retreat", complete: true });
+  });
+
+  it("takes the country and currency from the campus", async () => {
+    await createCourse(input);
+    expect(calls).toContainEqual({ table: "courses", op: "update", payload: { country: "US", currency: "USD" } });
+
+    calls.length = 0;
+    campusRow = { id: "campus-to", country: "CA" };
+    await createCourse({ ...input, university: "University of Toronto" });
+    expect(calls).toContainEqual({ table: "courses", op: "update", payload: { country: "CA", currency: "CAD" } });
   });
 
   it("rejects invalid input before touching the database", async () => {
@@ -91,7 +103,11 @@ describe("updateCourse", () => {
   });
 
   it("saves and logs", async () => {
+    campusRow = { id: "campus-to", country: "CA" };
     await updateCourse("c1", input);
+    expect(calls).toContainEqual(
+      expect.objectContaining({ table: "courses", op: "update", payload: expect.objectContaining({ campus_id: "campus-to", country: "CA", currency: "CAD" }) }),
+    );
     expect(logEvent).toHaveBeenCalledWith("c1", "course.updated", { complete: true });
   });
 });

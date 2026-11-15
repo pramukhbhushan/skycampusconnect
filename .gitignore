@@ -49,3 +49,6 @@ next-env.d.ts
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# e2e sign-ins saved by e2e/auth.setup.ts
+/e2e/.auth/
