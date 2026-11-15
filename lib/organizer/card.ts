@@ -23,15 +23,16 @@ export function courseCard(course: Course): OrganizerCourseCard {
       statusLabel: "Closed",
       tone: "ok",
       next: "This course is complete. Nothing more to do.",
-      cta: { label: "View course", href: `${base}/invoice` },
+      cta: { label: "View course", href: base },
     };
   }
 
   const step = currentStep(course.steps);
   const status = course.steps[step - 1];
   const name = STEP_NAMES[step - 1];
-  // Until A-2.2 adds pages for every step, steps without their own page link to the nearest one.
-  const href = step === 3 ? `${base}/funding` : step >= 4 ? `${base}/invoice` : `${base}/details`;
+  // Steps with their own page link there; checklist steps (2, 5, 6) live on the course page.
+  const href =
+    step === 1 ? `${base}/details` : step === 3 ? `${base}/funding` : step === 4 || step >= 7 ? `${base}/invoice` : base;
 
   if (status === "waiting") {
     const onOrganizer = step === 7;
