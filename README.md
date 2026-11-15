@@ -22,7 +22,7 @@ npm run dev   # http://localhost:3000
 | `/admin/reminders` | Email reminders (manual send + automatic rules) |
 
 ### Wiring up the backend
-- `lib/types.ts` mirrors the Supabase schema in `plan-v2.md`.
+- `lib/types.ts` mirrors the Supabase schema in `plan-v3.md`.
 - `lib/mock-data.ts` ends with data-access functions (`getCourse`, `getOrganizerCourses`, `getAdminRows`, …). Replace their bodies with Supabase queries.
 - `lib/pricing.ts` and `lib/steps.ts` hold the pricing formula and step logic, ready to share with server code.
 - Search for `TODO(backend)` for the spots where forms need server actions (save course, submit funding, request invoice, send reminders, sign-in).

@@ -4,7 +4,7 @@ Source: `raw-forms/SKY Campus Quote request form.pdf` (Google Form, IAHV).
 
 **Purpose (from form):** a quote is a good-faith estimate of services + dollar amount. Requested *before* a formal agreement (contract/MOU) exists; some clients agree verbally and need no written quote. "First the quotation, then the invoice." All pricing applies to online and in-person.
 
-Maps to plan.md **Step 4** ("Request a quote and invoice"), quote branch. Meeting notes: some schools (e.g. UCLA) need a quote before invoice.
+Maps to plan-v3.md **Step 4** ("Request a quote and invoice"), quote branch. Meeting notes: some schools (e.g. UCLA) need a quote before invoice.
 
 ## Questions (extracted)
 
